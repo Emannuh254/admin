@@ -58,9 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
         jobs: '/api/jobs/',
         postJob: '/api/jobs/post/',
         searchJobs: '/api/jobs/search/',
-        getJob: '/api/jobs/', // For getting a single job
-        updateJob: '/api/jobs/', // For updating a job
-        deleteJob: '/api/jobs/' // For deleting a job
+        getJob: '/api/jobs/',
+        updateJob: '/api/jobs/',
+        deleteJob: '/api/jobs/delete/'
     };
 
     // =======================
@@ -71,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const options = {
                 method,
                 mode: 'cors',
-                credentials: 'include', // Include cookies for session authentication
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -85,16 +84,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 options.body = JSON.stringify(body);
             }
 
-            const url = id ? `${API_BASE}${endpoint}${id}/` : `${API_BASE}${endpoint}`;
+            // Construct URL with ID if provided
+            let url = `${API_BASE}${endpoint}`;
+            if (id !== null && id !== undefined) {
+                // For delete endpoint, ID is part of the path
+                if (endpoint === API_ENDPOINTS.deleteJob) {
+                    url = `${API_BASE}${endpoint}${id}/`;
+                } else {
+                    // For get/update, ID is a query parameter
+                    url = `${url}?id=${id}`;
+                }
+            }
+
+            console.log(`Making ${method} request to: ${url}`);
+            
             const response = await fetch(url, options);
+            
+            console.log(`Response status: ${response.status}`);
             
             // Handle non-JSON responses (like server errors)
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
+                const errorText = await response.text();
+                console.error('Non-JSON response:', errorText);
                 throw new Error(`Server returned ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
+            console.log('Response data:', data);
             
             if (!response.ok) {
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -123,10 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const response = await fetch(`${API_BASE}/api/jobs/`, { 
-                method: "HEAD",
-                mode: 'cors',
-                credentials: 'include'
+                method: "GET",
+                mode: 'cors'
             });
+            
+            console.log(`Health check response status: ${response.status}`);
             
             if (response.ok) {
                 showToast("✅ Server is online", "success");
