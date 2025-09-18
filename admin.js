@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =======================
     // API Configuration
     // =======================
-    const API_BASE = "https://jobs-backend-4-qkd4.onrender.com/";
+    const API_BASE = "https://jobs-backend-4-qkd4.onrender.com";
     const API_ENDPOINTS = {
         jobs: '/api/jobs/',
         postJob: '/api/jobs/post/',
