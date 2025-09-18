@@ -1,122 +1,168 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Set up job posting form submission
+document.addEventListener('DOMContentLoaded', () => {
     const jobPostingForm = document.getElementById('job-posting-form');
-    jobPostingForm.addEventListener('submit', handleJobSubmission);
-    
-    // Set up search functionality
-    const searchInput = document.querySelector('.overflow-x-auto input[type="text"]');
-    searchInput.addEventListener('input', handleSearch);
+    const searchInput = document.querySelector('#job-search');
+
+    if (jobPostingForm) {
+        jobPostingForm.addEventListener('submit', handleJobSubmission);
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(handleSearch, 400));
+    }
+
+    loadJobs();
 });
 
-function handleJobSubmission(e) {
-    e.preventDefault();
-    
-    // Get form data
-    const jobData = {
-        title: document.getElementById('job-title').value,
-        company: document.getElementById('company').value,
-        location: document.getElementById('location').value,
-        type: document.getElementById('job-type').value,
-        salary: document.getElementById('salary').value,
-        tags: document.getElementById('tags').value.split(',').map(tag => tag.trim()),
-        description: document.getElementById('description').value,
-        requirements: document.getElementById('requirements').value,
-        applicationLink: document.getElementById('application-link').value
-    };
-    
-    // Show loading state
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    const originalText = submitButton.textContent;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Posting...';
-    submitButton.disabled = true;
-    
-    // Simulate API call with timeout
-    setTimeout(() => {
-        // In a real app, this would be a fetch request to your backend
-        // fetch('/api/jobs', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //   },
-        //   body: JSON.stringify(jobData),
-        // })
-        // .then(response => response.json())
-        // .then(data => {
-        //   showSuccessMessage('Job posted successfully!');
-        //   jobPostingForm.reset();
-        //   // Refresh the jobs table
-        //   loadRecentJobs();
-        // })
-        // .catch(error => {
-        //   console.error('Error posting job:', error);
-        //   showErrorMessage('Failed to post job. Please try again.');
-        // });
-        
-        // For demo purposes, we'll just show a success message
-        showSuccessMessage('Job posted successfully!');
-        jobPostingForm.reset();
-        
-        // Reset button
-        submitButton.textContent = originalText;
-        submitButton.disabled = false;
-    }, 1500);
+// =======================
+// API Base URL
+// =======================
+const API_BASE = "https://jobs-backend-4-qkd4.onrender.com";
+
+// =======================
+// API Helper
+// =======================
+async function apiRequest(endpoint, method = 'GET', body = null) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (['POST', 'PUT', 'DELETE'].includes(method)) {
+        headers['X-CSRFToken'] = getCookie('csrftoken');
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null,
+        });
+        return await res.json();
+    } catch (err) {
+        console.error("API request failed:", err);
+        showToast("Network error. Please try again.", "danger");
+        return null;
+    }
 }
 
-function handleSearch(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    
-    // In a real app, this would be a fetch request to your backend
-    // fetch(`/api/jobs?search=${encodeURIComponent(searchTerm)}`)
-    //   .then(response => response.json())
-    //   .then(data => updateJobsTable(data))
-    //   .catch(error => console.error('Error searching jobs:', error));
-    
-    // For demo purposes, we'll just filter the existing table rows
-    const tableRows = document.querySelectorAll('tbody tr');
-    
-    tableRows.forEach(row => {
-        const jobTitle = row.querySelector('td:first-child div').textContent.toLowerCase();
-        const company = row.querySelector('td:nth-child(2) div').textContent.toLowerCase();
-        const location = row.querySelector('td:nth-child(3) div').textContent.toLowerCase();
-        
-        if (jobTitle.includes(searchTerm) || company.includes(searchTerm) || location.includes(searchTerm)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+// =======================
+// Job Actions
+// =======================
+async function handleJobSubmission(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+
+    const jobData = {
+        title: form['job-title'].value,
+        company: form['company'].value,
+        location: form['location'].value,
+        type: form['job-type'].value,
+        salary: form['salary'].value,
+        tags: form['tags'].value,
+        description: form['description'].value,
+        requirements: form['requirements'].value,
+        application_link: form['application-link'].value,
+    };
+
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+    submitButton.disabled = true;
+
+    const data = await apiRequest("post/", "POST", jobData);
+
+    if (data?.success) {
+        showToast(data.message, "success");
+        form.reset();
+        await loadJobs();
+    } else {
+        showToast(data?.message || "Failed to post job", "danger");
+    }
+
+    submitButton.innerHTML = originalText;
+    submitButton.disabled = false;
+}
+
+async function handleSearch(e) {
+    const query = e.target.value.trim().toLowerCase();
+    if (!query) return loadJobs();
+
+    const data = await apiRequest(`search/?q=${encodeURIComponent(query)}`);
+    if (data) updateJobsTable(data.jobs);
+}
+
+async function loadJobs() {
+    const tbody = document.querySelector('tbody');
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading jobs...</td></tr>`;
+
+    const data = await apiRequest("");
+    if (data) updateJobsTable(data.jobs);
+}
+
+// =======================
+// Render Table
+// =======================
+function updateJobsTable(jobs) {
+    const tbody = document.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    if (!jobs || jobs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3">No jobs found</td></tr>';
+        return;
+    }
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${job.title}</td>
+            <td>${job.company}</td>
+            <td>${job.location}</td>
+            <td><span class="badge bg-primary">${job.type}</span></td>
+            <td>${new Date(job.posted_date).toLocaleDateString()}</td>
+            <td>
+                <button class="btn btn-sm btn-info"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(row);
     });
 }
 
-function showSuccessMessage(message) {
-    // Create a toast notification
+// =======================
+// Toasts
+// =======================
+function showToast(message, type = "info") {
+    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
     const toast = document.createElement('div');
-    toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center';
+    toast.className = `toast align-items-center text-white bg-${type} border-0 show mb-2`;
+    toast.setAttribute('role', 'alert');
     toast.innerHTML = `
-        <i class="fas fa-check-circle mr-2"></i>
-        <span>${message}</span>
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto"></button>
+        </div>
     `;
-    
-    document.body.appendChild(toast);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+    toast.querySelector('.btn-close').addEventListener('click', () => toast.remove());
+    toastContainer.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
 }
 
-function showErrorMessage(message) {
-    // Create a toast notification
-    const toast = document.createElement('div');
-    toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center';
-    toast.innerHTML = `
-        <i class="fas fa-exclamation-circle mr-2"></i>
-        <span>${message}</span>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    document.body.appendChild(container);
+    return container;
+}
+
+// =======================
+// Helpers
+// =======================
+function getCookie(name) {
+    return document.cookie.split('; ')
+        .find(row => row.startsWith(name + '='))
+        ?.split('=')[1];
+}
+
+function debounce(func, delay) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
 }
