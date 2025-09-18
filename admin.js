@@ -5,17 +5,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearSearchBtn = document.getElementById('clear-search');
     const jobsTableBody = document.getElementById('jobs-table-body');
     const jobsCount = document.getElementById('jobs-count');
-    const prevPageBtn = document.getElementById('prev-page');
-    const nextPageBtn = document.getElementById('next-page');
     const menuToggle = document.getElementById('menu-toggle');
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const editJobModal = document.getElementById('edit-job-modal');
+    const editJobForm = document.getElementById('edit-job-form');
+    const closeEditModal = document.getElementById('close-edit-modal');
 
     // State
-    let currentPage = 1;
-    let totalPages = 1;
     let searchQuery = '';
     let isLoading = false;
+    let currentEditingJobId = null;
 
     // Event Listeners
     if (jobPostingForm) {
@@ -30,14 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
         clearSearchBtn.addEventListener('click', clearSearch);
     }
 
-    if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => changePage(currentPage - 1));
-    }
-
-    if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => changePage(currentPage + 1));
-    }
-
     if (menuToggle) {
         menuToggle.addEventListener('click', toggleSidebar);
     }
@@ -46,29 +38,40 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebarOverlay.addEventListener('click', closeSidebar);
     }
 
+    if (editJobForm) {
+        editJobForm.addEventListener('submit', handleEditJobSubmission);
+    }
+
+    if (closeEditModal) {
+        closeEditModal.addEventListener('click', closeEditJobModal);
+    }
+
     // Initialize
     checkServerStatus();
     loadJobs();
 
     // =======================
-    // API Configuration - UPDATED WITH CORRECT BACKEND URL
+    // API Configuration
     // =======================
-    const API_BASE = "https://jobs-backend-4-qkd4.onrender.com";
+    const API_BASE = "https://jobs-backend-4-qkd4.onrender.com/";
     const API_ENDPOINTS = {
         jobs: '/api/jobs/',
         postJob: '/api/jobs/post/',
         searchJobs: '/api/jobs/search/',
-        deleteJob: '/api/jobs/delete/' // Assuming you have this endpoint
+        getJob: '/api/jobs/', // For getting a single job
+        updateJob: '/api/jobs/', // For updating a job
+        deleteJob: '/api/jobs/' // For deleting a job
     };
 
     // =======================
     // API Helper with Error Handling and CORS Support
     // =======================
-    async function apiRequest(endpoint, method = 'GET', body = null) {
+    async function apiRequest(endpoint, method = 'GET', body = null, id = null) {
         try {
             const options = {
                 method,
-                mode: 'cors', // Explicitly set CORS mode
+                mode: 'cors',
+                credentials: 'include', // Include cookies for session authentication
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -82,7 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 options.body = JSON.stringify(body);
             }
 
-            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            const url = id ? `${API_BASE}${endpoint}${id}/` : `${API_BASE}${endpoint}`;
+            const response = await fetch(url, options);
             
             // Handle non-JSON responses (like server errors)
             const contentType = response.headers.get('content-type');
@@ -118,10 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast("🔄 Checking server status...", "info");
         
         try {
-            // Use the jobs endpoint to check server status
             const response = await fetch(`${API_BASE}/api/jobs/`, { 
                 method: "HEAD",
-                mode: 'cors'
+                mode: 'cors',
+                credentials: 'include'
             });
             
             if (response.ok) {
@@ -178,6 +182,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Validate URL
+        try {
+            new URL(jobData.application_link);
+        } catch (e) {
+            showToast("⚠️ Please enter a valid URL for the application link", "warning");
+            return;
+        }
+
         // Show loading state
         isLoading = true;
         buttonText.textContent = 'Posting...';
@@ -208,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleSearch(e) {
         searchQuery = e.target.value.trim();
-        currentPage = 1; // Reset to first page when searching
         
         // Show/hide clear button
         if (searchQuery) {
@@ -269,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const data = await apiRequest(`${API_ENDPOINTS.deleteJob}${jobId}/`, "DELETE");
+            const data = await apiRequest(API_ENDPOINTS.deleteJob, "DELETE", null, jobId);
             
             if (data && data.success) {
                 showToast("🗑️ Job deleted successfully", "success");
@@ -281,6 +292,108 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Delete job error:', error);
             showToast("❌ Failed to delete job", "danger");
         }
+    }
+
+    async function editJob(jobId) {
+        try {
+            const data = await apiRequest(API_ENDPOINTS.getJob, "GET", null, jobId);
+            
+            if (data) {
+                // Populate the edit form
+                editJobForm['edit-job-title'].value = data.title;
+                editJobForm['edit-company'].value = data.company;
+                editJobForm['edit-location'].value = data.location;
+                editJobForm['edit-job-type'].value = data.type;
+                editJobForm['edit-salary'].value = data.salary;
+                editJobForm['edit-tags'].value = Array.isArray(data.tags) ? data.tags.join(', ') : data.tags;
+                editJobForm['edit-description'].value = data.description;
+                editJobForm['edit-requirements'].value = data.requirements;
+                editJobForm['edit-application-link'].value = data.application_link;
+                
+                // Store the job ID
+                currentEditingJobId = jobId;
+                
+                // Show the modal
+                editJobModal.classList.remove('hidden');
+            } else {
+                showToast("❌ Failed to load job details", "danger");
+            }
+        } catch (error) {
+            console.error('Edit job error:', error);
+            showToast("❌ Failed to load job details", "danger");
+        }
+    }
+
+    async function handleEditJobSubmission(e) {
+        e.preventDefault();
+        
+        if (isLoading) return;
+        
+        const form = e.target;
+        const submitButton = form.querySelector('button[type="submit"]');
+        const buttonText = submitButton.querySelector('.button-text');
+        const buttonSpinner = submitButton.querySelector('.loading-spinner');
+        
+        // Collect form data
+        const jobData = {
+            title: form['edit-job-title'].value.trim(),
+            company: form['edit-company'].value.trim(),
+            location: form['edit-location'].value.trim(),
+            type: form['edit-job-type'].value,
+            salary: form['edit-salary'].value.trim(),
+            tags: form['edit-tags'].value.trim(),
+            description: form['edit-description'].value.trim(),
+            requirements: form['edit-requirements'].value.trim(),
+            application_link: form['edit-application-link'].value.trim()
+        };
+
+        // Validate required fields
+        if (!jobData.title || !jobData.company || !jobData.location || !jobData.type || 
+            !jobData.salary || !jobData.description || !jobData.requirements || !jobData.application_link) {
+            showToast("⚠️ Please fill in all required fields", "warning");
+            return;
+        }
+
+        // Validate URL
+        try {
+            new URL(jobData.application_link);
+        } catch (e) {
+            showToast("⚠️ Please enter a valid URL for the application link", "warning");
+            return;
+        }
+
+        // Show loading state
+        isLoading = true;
+        buttonText.textContent = 'Updating...';
+        buttonSpinner.classList.remove('hidden');
+        submitButton.disabled = true;
+
+        try {
+            const data = await apiRequest(API_ENDPOINTS.updateJob, "PUT", jobData, currentEditingJobId);
+            
+            if (data && data.success) {
+                showToast("✅ Job updated successfully!", "success");
+                closeEditJobModal();
+                loadJobs(); // Refresh the job list
+            } else {
+                showToast(data?.message || "❌ Failed to update job", "danger");
+            }
+        } catch (error) {
+            console.error('Job update error:', error);
+            showToast("❌ Failed to update job. Please try again.", "danger");
+        } finally {
+            // Reset button state
+            isLoading = false;
+            buttonText.textContent = 'Update Job';
+            buttonSpinner.classList.add('hidden');
+            submitButton.disabled = false;
+        }
+    }
+
+    function closeEditJobModal() {
+        editJobModal.classList.add('hidden');
+        editJobForm.reset();
+        currentEditingJobId = null;
     }
 
     // =======================
@@ -297,6 +410,17 @@ document.addEventListener('DOMContentLoaded', () => {
         jobs.forEach(job => {
             const row = document.createElement('tr');
             row.className = 'job-row';
+            
+            // Format tags for display
+            let tagsHtml = '';
+            if (job.tags && Array.isArray(job.tags)) {
+                tagsHtml = job.tags.map(tag => 
+                    `<span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-1">
+                        ${escapeHtml(tag)}
+                    </span>`
+                ).join('');
+            }
+            
             row.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">${escapeHtml(job.title)}</div>
@@ -313,8 +437,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     ${formatDate(job.posted_date)}
                 </td>
+                <td class="px-6 py-4">
+                    <div class="flex flex-wrap">
+                        ${tagsHtml}
+                    </div>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button class="action-btn text-indigo-600 hover:text-indigo-900 mr-3" title="Edit">
+                    <button class="action-btn text-indigo-600 hover:text-indigo-900 mr-3" title="Edit" data-job-id="${job.id}">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="action-btn text-red-600 hover:text-red-900" title="Delete" data-job-id="${job.id}">
@@ -323,8 +452,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             `;
             
-            // Add event listener to delete button
-            const deleteBtn = row.querySelector('[data-job-id]');
+            // Add event listeners to action buttons
+            const editBtn = row.querySelector('[data-job-id].text-indigo-600');
+            const deleteBtn = row.querySelector('[data-job-id].text-red-600');
+            
+            if (editBtn) {
+                editBtn.addEventListener('click', () => editJob(job.id));
+            }
+            
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', () => deleteJob(job.id));
             }
@@ -340,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showLoadingState() {
         jobsTableBody.innerHTML = `
             <tr class="loading-row">
-                <td colspan="6" class="px-6 py-4 text-center">
+                <td colspan="7" class="px-6 py-4 text-center">
                     <div class="flex justify-center items-center">
                         <div class="loading-spinner"></div>
                         <span class="ml-2">Loading jobs...</span>
@@ -353,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showEmptyState() {
         jobsTableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="px-6 py-4 text-center">
+                <td colspan="7" class="px-6 py-4 text-center">
                     <div class="text-center py-8">
                         <i class="fas fa-briefcase text-gray-300 text-4xl mb-3"></i>
                         <p class="text-gray-500">No jobs found</p>
@@ -368,13 +503,6 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.value = '';
         searchQuery = '';
         clearSearchBtn.classList.add('hidden');
-        currentPage = 1;
-        loadJobs();
-    }
-
-    function changePage(page) {
-        if (page < 1 || page > totalPages || isLoading) return;
-        currentPage = page;
         loadJobs();
     }
 
