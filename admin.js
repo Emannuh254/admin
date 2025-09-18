@@ -51,9 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadJobs();
 
     // =======================
-    // API Configuration - FIXED TO MATCH BACKEND PATHS
+    // API Configuration - UPDATED WITH CORRECT BACKEND URL
     // =======================
-    const API_BASE = ""; // Remove base URL since we're using relative paths
+    const API_BASE = "https://jobs-backend-4-qkd4.onrender.com";
     const API_ENDPOINTS = {
         jobs: '/api/jobs/',
         postJob: '/api/jobs/post/',
@@ -62,12 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // =======================
-    // API Helper with Error Handling
+    // API Helper with Error Handling and CORS Support
     // =======================
     async function apiRequest(endpoint, method = 'GET', body = null) {
         try {
             const options = {
                 method,
+                mode: 'cors', // Explicitly set CORS mode
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -98,7 +99,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return data;
         } catch (error) {
             console.error('API request failed:', error);
-            showToast(`⚠️ ${error.message || 'Network error. Please try again.'}`, 'danger');
+            
+            // Special handling for CORS errors
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                showToast("⚠️ CORS error: Backend may not be configured to accept requests from this domain", "danger");
+            } else {
+                showToast(`⚠️ ${error.message || 'Network error. Please try again.'}`, 'danger');
+            }
+            
             return null;
         }
     }
@@ -111,7 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             // Use the jobs endpoint to check server status
-            const response = await fetch('/api/jobs/', { method: "HEAD" });
+            const response = await fetch(`${API_BASE}/api/jobs/`, { 
+                method: "HEAD",
+                mode: 'cors'
+            });
             
             if (response.ok) {
                 showToast("✅ Server is online", "success");
@@ -122,7 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Server health check failed:', error);
-            showToast("❌ Server is unreachable", "danger");
+            
+            // Special handling for CORS errors
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                showToast("⚠️ Unable to connect to server. CORS may be blocking the request.", "danger");
+            } else {
+                showToast("❌ Server is unreachable", "danger");
+            }
+            
             return false;
         }
     }
