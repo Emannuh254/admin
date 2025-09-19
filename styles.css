@@ -455,12 +455,13 @@ textarea.form-control {
     .sidebar {
         position: fixed;
         top: 0;
-        left: -100%; /* Completely off screen */
+        left: 0;
         width: 280px;
         height: 100vh;
         background: linear-gradient(180deg, #1e293b, #0f172a);
         z-index: 1000;
-        transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        transform: translateX(-100%); /* Completely off screen */
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         box-shadow: 5px 0 15px rgba(0, 0, 0, 0.3);
         border-right: 1px solid #334155;
         overflow-y: auto;
@@ -471,7 +472,7 @@ textarea.form-control {
 
     /* Show sidebar when open */
     .sidebar.open {
-        left: 0;
+        transform: translateX(0);
     }
 
     /* Dark overlay behind sidebar */
