@@ -1,5 +1,25 @@
+// ===============================
+// Debug Configuration
+// ===============================
+const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === 'true';
+
+// ===============================
+// API Endpoints
+// ===============================
+const API_BASE = "http://127.0.0.1:8000/api";
+const API_ENDPOINTS = {
+  GET_JOBS: `${API_BASE}/jobs/`,        // list jobs
+  POST_JOB: `${API_BASE}/jobs/post/`,   // create job
+  SEARCH_JOBS: `${API_BASE}/jobs/`,     // ?search=query
+  GET_JOB: (id) => `${API_BASE}/jobs/${id}/`,     // retrieve job
+  UPDATE_JOB: (id) => `${API_BASE}/jobs/${id}/`,  // update job
+  DELETE_JOB: (id) => `${API_BASE}/jobs/${id}/`,  // delete job
+};
+
+// ===============================
+// DOM Elements
+// ===============================
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
     const jobPostingForm = document.getElementById('job-posting-form');
     const searchInput = document.getElementById('job-search');
     const clearSearchBtn = document.getElementById('clear-search');
@@ -13,20 +33,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeEditModal = document.getElementById('close-edit-modal');
     const cancelEditBtn = document.getElementById('cancel-edit');
     const closeSidebarBtn = document.getElementById('close-sidebar');
+    const debugPanel = document.getElementById('debug-panel');
+    const debugToggle = document.getElementById('debug-toggle');
+    const debugContent = document.getElementById('debug-content');
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    const debugCloseBtn = document.getElementById('debug-close');
 
-    // State
+    // ===============================
+    // Debug Mode Initialization
+    // ===============================
+    if (DEBUG_MODE) {
+        console.log("🐛 DEBUG MODE ENABLED");
+        if (debugPanel) debugPanel.classList.remove('hidden');
+        if (debugToggle) debugToggle.checked = true;
+        
+        // Add debug info to page
+        document.body.classList.add('debug-mode');
+        addDebugInfo();
+    }
+
+    // Debug toggle event listener
+    if (debugToggle) {
+        debugToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('debug-mode');
+                if (debugPanel) debugPanel.classList.remove('hidden');
+                addDebugInfo();
+            } else {
+                document.body.classList.remove('debug-mode');
+                if (debugPanel) debugPanel.classList.add('hidden');
+            }
+        });
+    }
+
+    if (debugCloseBtn) {
+        debugCloseBtn.addEventListener('click', () => {
+            if (debugPanel) debugPanel.classList.add('hidden');
+            if (debugToggle) debugToggle.checked = false;
+        });
+    }
+
+    // ===============================
+    // State Management
+    // ===============================
     let searchQuery = '';
     let isLoading = false;
     let currentEditingJobId = null;
     let jobs = [];
     let currentPage = 1;
     const jobsPerPage = 10;
+    let totalPages = 1;
+    let debugLogs = [];
+    let formErrors = {};
 
+    // ===============================
     // Event Listeners
+    // ===============================
     if (jobPostingForm) {
         jobPostingForm.addEventListener('submit', handleJobSubmission);
         
-        // Add real-time validation
+        // Real-time validation
         const formInputs = jobPostingForm.querySelectorAll('input, select, textarea');
         formInputs.forEach(input => {
             input.addEventListener('blur', () => validateField(input));
@@ -61,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editJobForm) {
         editJobForm.addEventListener('submit', handleEditJobSubmission);
         
-        // Add real-time validation
+        // Real-time validation
         const editFormInputs = editJobForm.querySelectorAll('input, select, textarea');
         editFormInputs.forEach(input => {
             input.addEventListener('blur', () => validateField(input));
@@ -81,6 +148,25 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelEditBtn.addEventListener('click', closeEditJobModal);
     }
 
+    // Pagination buttons
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                fetchJobs();
+            }
+        });
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                fetchJobs();
+            }
+        });
+    }
+
     // Close sidebar when clicking on a menu item on mobile
     const sidebarLinks = sidebar.querySelectorAll('.sidebar-link');
     sidebarLinks.forEach(link => {
@@ -92,11 +178,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Close sidebar when resizing window to desktop size
-    window.addEventListener('resize', () => {
+    window.addEventListener('resize', debounce(() => {
         if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
             closeSidebar();
         }
-    });
+    }, 300));
 
     // Close modal when clicking outside
     window.addEventListener('click', (e) => {
@@ -119,37 +205,135 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ctrl/Cmd + K to focus search
         if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
             e.preventDefault();
-            searchInput.focus();
+            if (searchInput) searchInput.focus();
+        }
+        
+        // Debug mode shortcut: Ctrl+Shift+D
+        if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+            e.preventDefault();
+            toggleDebugMode();
         }
     });
 
-    // Initialize
-    checkServerStatus();
-    loadJobs();
+    // Global error handlers
+    window.addEventListener('error', (event) => {
+        logDebug(`Global error: ${event.message}`, event.error);
+        if (DEBUG_MODE) {
+            showToast(`Global error: ${event.message}`, 'danger');
+        }
+    });
 
-    // =======================
-    // API Configuration
-    // =======================
-    const API_BASE = "https://jobs-backend-4-qkd4.onrender.com";
-    const API_ENDPOINTS = {
-        jobs: '/api/jobs/',
-        postJob: '/api/jobs/post/',
-        searchJobs: '/api/jobs/search/',
-        getJob: '/api/jobs/',
-        updateJob: '/api/jobs/',
-        deleteJob: '/api/jobs/delete/'
-    };
+    window.addEventListener('unhandledrejection', (event) => {
+        logDebug(`Unhandled rejection: ${event.reason}`, event.reason);
+        if (DEBUG_MODE) {
+            showToast(`Unhandled rejection: ${event.reason}`, 'danger');
+        }
+    });
 
-    // =======================
-    // API Helper with Enhanced Error Handling and Retry Logic
-    // =======================
+    // ===============================
+    // Debug Helper Functions
+    // ===============================
+    function logDebug(message, data = null) {
+        const timestamp = new Date().toISOString();
+        const logEntry = {
+            timestamp,
+            message,
+            data
+        };
+        
+        debugLogs.push(logEntry);
+        
+        // Keep only last 50 logs
+        if (debugLogs.length > 50) {
+            debugLogs = debugLogs.slice(-50);
+        }
+        
+        if (DEBUG_MODE) {
+            console.log(`🐛 [${timestamp}] ${message}`, data);
+            updateDebugPanel();
+        }
+    }
+
+    function addDebugInfo() {
+        if (!DEBUG_MODE) return;
+        
+        const debugInfo = document.createElement('div');
+        debugInfo.className = 'debug-info';
+        debugInfo.innerHTML = `
+            <h4>Debug Information</h4>
+            <p><strong>API Base:</strong> ${API_BASE}</p>
+            <p><strong>Current Page:</strong> ${currentPage}</p>
+            <p><strong>Total Pages:</strong> ${totalPages}</p>
+            <p><strong>Jobs Per Page:</strong> ${jobsPerPage}</p>
+            <p><strong>Search Query:</strong> ${searchQuery || 'None'}</p>
+            <p><strong>Loading State:</strong> ${isLoading}</p>
+            <p><strong>Current Editing Job:</strong> ${currentEditingJobId || 'None'}</p>
+            <p><strong>Total Jobs:</strong> ${jobs.length}</p>
+            <p><strong>Form Errors:</strong> ${Object.keys(formErrors).length}</p>
+        `;
+        
+        if (debugContent) {
+            debugContent.innerHTML = '';
+            debugContent.appendChild(debugInfo);
+        }
+    }
+
+    function updateDebugPanel() {
+        if (!DEBUG_MODE || !debugContent) return;
+        
+        const logsHtml = debugLogs.map(log => `
+            <div class="debug-log">
+                <div class="debug-timestamp">${log.timestamp}</div>
+                <div class="debug-message">${log.message}</div>
+                ${log.data ? `<pre class="debug-data">${JSON.stringify(log.data, null, 2)}</pre>` : ''}
+            </div>
+        `).join('');
+        
+        debugContent.innerHTML = `
+            <div class="debug-info">
+                <h4>Debug Information</h4>
+                <p><strong>API Base:</strong> ${API_BASE}</p>
+                <p><strong>Current Page:</strong> ${currentPage}</p>
+                <p><strong>Total Pages:</strong> ${totalPages}</p>
+                <p><strong>Jobs Per Page:</strong> ${jobsPerPage}</p>
+                <p><strong>Search Query:</strong> ${searchQuery || 'None'}</p>
+                <p><strong>Loading State:</strong> ${isLoading}</p>
+                <p><strong>Current Editing Job:</strong> ${currentEditingJobId || 'None'}</p>
+                <p><strong>Total Jobs:</strong> ${jobs.length}</p>
+                <p><strong>Form Errors:</strong> ${Object.keys(formErrors).length}</p>
+            </div>
+            <div class="debug-logs">
+                <h4>Debug Logs</h4>
+                ${logsHtml}
+            </div>
+        `;
+    }
+
+    function toggleDebugMode() {
+        const newDebugMode = !DEBUG_MODE;
+        const url = new URL(window.location);
+        if (newDebugMode) {
+            url.searchParams.set('debug', 'true');
+            showToast("🐛 Debug mode enabled", "info");
+        } else {
+            url.searchParams.delete('debug');
+            showToast("🐛 Debug mode disabled", "info");
+        }
+        window.location.href = url.toString();
+    }
+
+    // ===============================
+    // API Helper with Enhanced Error Handling
+    // ===============================
     async function apiRequest(endpoint, method = 'GET', body = null, id = null, retryCount = 0) {
         const maxRetries = 2;
+        const requestId = Math.random().toString(36).substring(2, 9);
+        
+        logDebug(`[${requestId}] Starting API request: ${method} ${endpoint}`, { body, id });
         
         try {
             const options = {
                 method,
-                mode: 'cors',
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -164,27 +348,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Construct URL with ID if provided
-            let url = `${API_BASE}${endpoint}`;
+            let url = endpoint;
             if (id !== null && id !== undefined) {
-                // For delete endpoint, ID is part of the path
-                if (endpoint === API_ENDPOINTS.deleteJob) {
-                    url = `${API_BASE}${endpoint}${id}/`;
-                } else {
-                    // For get/update, ID is a query parameter
-                    url = `${url}?id=${id}`;
-                }
+                url = endpoint(id);
             }
 
             // Add pagination parameters for GET requests
-            if (method === 'GET' && endpoint === API_ENDPOINTS.jobs) {
+            if (method === 'GET' && endpoint === API_ENDPOINTS.GET_JOBS) {
                 url += `?page=${currentPage}&limit=${jobsPerPage}`;
                 if (searchQuery) {
                     url += `&search=${encodeURIComponent(searchQuery)}`;
                 }
             }
 
-            console.log(`Making ${method} request to: ${url}`);
-            
+            logDebug(`[${requestId}] Request URL: ${url}`, options);
+
             // Add timeout to fetch request
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -196,30 +374,31 @@ document.addEventListener('DOMContentLoaded', () => {
             
             clearTimeout(timeoutId);
             
-            console.log(`Response status: ${response.status}`);
-            
-            // Handle non-JSON responses (like server errors)
+            logDebug(`[${requestId}] Response status: ${response.status}`, response);
+
+            // Handle non-JSON responses
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 const errorText = await response.text();
-                console.error('Non-JSON response:', errorText);
+                logDebug(`[${requestId}] Non-JSON response: ${errorText}`, { status: response.status });
                 throw new Error(`Server returned ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
-            console.log('Response data:', data);
+            logDebug(`[${requestId}] Response data:`, data);
             
             if (!response.ok) {
+                logDebug(`[${requestId}] API Error:`, data);
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
             }
 
             return data;
         } catch (error) {
-            console.error('API request failed:', error);
+            logDebug(`[${requestId}] API request failed:`, error);
             
             // Retry logic for network errors
             if (retryCount < maxRetries && (error.name === 'TypeError' || error.name === 'AbortError')) {
-                console.log(`Retrying request (${retryCount + 1}/${maxRetries})...`);
+                logDebug(`[${requestId}] Retrying request (${retryCount + 1}/${maxRetries})...`);
                 await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
                 return apiRequest(endpoint, method, body, id, retryCount + 1);
             }
@@ -237,11 +416,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // =======================
-    // Server Health Check with Auto-retry
-    // =======================
+    // ===============================
+    // Server Health Check
+    // ===============================
     async function checkServerStatus() {
         showToast("🔄 Checking server status...", "info");
+        logDebug("Starting server health check");
         
         let attempts = 0;
         const maxAttempts = 3;
@@ -249,24 +429,27 @@ document.addEventListener('DOMContentLoaded', () => {
         while (attempts < maxAttempts) {
             attempts++;
             try {
-                const response = await fetch(`${API_BASE}/api/jobs/`, { 
+                logDebug(`Health check attempt ${attempts}/${maxAttempts}`);
+                const response = await fetch(API_ENDPOINTS.GET_JOBS, { 
                     method: "GET",
                     mode: 'cors'
                 });
                 
-                console.log(`Health check response status: ${response.status}`);
+                logDebug(`Health check response status: ${response.status}`, response);
                 
                 if (response.ok) {
                     showToast("✅ Server is online", "success");
+                    logDebug("Server health check successful");
                     return true;
                 } else {
                     showToast(`⚠️ Server responded with ${response.status}`, "warning");
+                    logDebug(`Server responded with status: ${response.status}`);
                     if (attempts < maxAttempts) {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                 }
             } catch (error) {
-                console.error('Server health check failed:', error);
+                logDebug(`Health check failed:`, error);
                 
                 if (attempts < maxAttempts) {
                     showToast(`⚠️ Connection attempt ${attempts} failed. Retrying...`, "warning");
@@ -282,517 +465,576 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        logDebug("Server health check failed after all attempts");
         return false;
     }
 
-    // =======================
-    // Enhanced Form Validation
-    // =======================
-    function validateField(field) {
-        const errorMessage = field.parentNode.querySelector('.error-message');
-        let isValid = true;
-        let errorMsg = '';
-        
-        // Reset field state
-        field.classList.remove('error');
-        if (errorMessage) {
-            errorMessage.classList.remove('show');
-        }
-        
-        // Check if field is required and empty
-        if (field.hasAttribute('required') && !field.value.trim()) {
-            isValid = false;
-            errorMsg = 'This field is required';
-        }
-        
-        // Special validation for application link
-        if ((field.id === 'application-link' || field.id === 'edit-application-link') && field.value.trim()) {
-            try {
-                new URL(field.value);
-            } catch (e) {
-                isValid = false;
-                errorMsg = 'Please enter a valid URL';
-            }
-        }
-        
-        // Special validation for email fields
-        if ((field.id === 'email' || field.id === 'edit-email') && field.value.trim()) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(field.value)) {
-                isValid = false;
-                errorMsg = 'Please enter a valid email address';
-            }
-        }
-        
-        // Update field state based on validation
-        if (!isValid) {
-            field.classList.add('error');
-            if (errorMessage) {
-                errorMessage.textContent = errorMsg;
-                errorMessage.classList.add('show');
-            }
-            field.classList.add('shake');
-            setTimeout(() => field.classList.remove('shake'), 500);
-        }
-        
-        return isValid;
-    }
-    
-    function validateForm(form) {
-        const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
-        let isValid = true;
-        
-        inputs.forEach(input => {
-            if (!validateField(input)) {
-                isValid = false;
-            }
-        });
-        
-        return isValid;
-    }
-
-    // =======================
-    // Enhanced Job Actions
-    // =======================
-    async function handleJobSubmission(e) {
-        e.preventDefault();
-        
+    // ===============================
+    // Job Functions
+    // ===============================
+    async function fetchJobs() {
         if (isLoading) return;
         
-        // Validate form before submission
-        if (!validateForm(jobPostingForm)) {
-            showToast("⚠️ Please fix the errors in the form", "warning");
+        isLoading = true;
+        setLoadingState(true);
+        
+        logDebug("Fetching jobs", { page: currentPage, searchQuery });
+        
+        try {
+            const response = await apiRequest(API_ENDPOINTS.GET_JOBS, 'GET');
+            
+            if (response) {
+                jobs = response.results || [];
+                totalPages = Math.ceil(response.count / jobsPerPage) || 1;
+                
+                logDebug("Jobs fetched successfully", { 
+                    count: response.count, 
+                    results: jobs.length,
+                    totalPages 
+                });
+                
+                renderJobsTable();
+                updatePaginationControls();
+                updateJobsCount(response.count || 0);
+            }
+        } catch (error) {
+            logDebug("Error fetching jobs:", error);
+            showToast("Failed to fetch jobs. Please try again.", "danger");
+        } finally {
+            isLoading = false;
+            setLoadingState(false);
+        }
+    }
+
+    function renderJobsTable() {
+        if (!jobsTableBody) return;
+        
+        if (jobs.length === 0) {
+            jobsTableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center">
+                        <div class="text-gray-400 mb-2">
+                            <i class="fas fa-briefcase text-4xl"></i>
+                        </div>
+                        <p class="text-gray-400">No jobs found</p>
+                        ${searchQuery ? `
+                            <button class="mt-4 text-indigo-400 hover:text-indigo-300" onclick="clearSearch()">
+                                Clear search
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
             return;
         }
         
-        const form = e.target;
-        const submitButton = form.querySelector('button[type="submit"]');
-        const buttonText = submitButton.querySelector('.button-text');
-        const buttonSpinner = submitButton.querySelector('.loading-spinner');
+        jobsTableBody.innerHTML = jobs.map(job => `
+            <tr class="job-row">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium">${escapeHtml(job.title)}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${escapeHtml(job.company)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${escapeHtml(job.location)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="badge bg-indigo-900 text-indigo-200">${escapeHtml(job.type)}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${formatDate(job.created_at)}
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex flex-wrap gap-1">
+                        ${job.tags ? job.tags.split(',').map(tag => 
+                            `<span class="tag-badge">${escapeHtml(tag.trim())}</span>`
+                        ).join('') : ''}
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button class="action-btn edit mr-2" onclick="editJob(${job.id})" aria-label="Edit job">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn delete" onclick="confirmDeleteJob(${job.id})" aria-label="Delete job">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updatePaginationControls() {
+        if (prevPageBtn) {
+            prevPageBtn.disabled = currentPage <= 1;
+        }
         
-        // Collect form data
-        const jobData = {
-            title: form['job-title'].value.trim(),
-            company: form['company'].value.trim(),
-            location: form['location'].value.trim(),
-            type: form['job-type'].value,
-            salary: form['salary'].value.trim(),
-            tags: form['tags'].value.trim().split(',').map(tag => tag.trim()).filter(tag => tag),
-            description: form['description'].value.trim(),
-            requirements: form['requirements'].value.trim(),
-            application_link: form['application-link'].value.trim()
-        };
-
-        // Show loading state
-        isLoading = true;
-        buttonText.textContent = 'Posting...';
-        buttonSpinner.classList.remove('hidden');
-        submitButton.disabled = true;
-
-        try {
-            const data = await apiRequest(API_ENDPOINTS.postJob, "POST", jobData);
+        if (nextPageBtn) {
+            nextPageBtn.disabled = currentPage >= totalPages;
+        }
+        
+        // Update page number buttons
+        const paginationContainer = document.getElementById('pagination');
+        if (paginationContainer) {
+            const pageButtons = [];
             
-            if (data && data.success) {
-                showToast("🎉 Job posted successfully!", "success");
-                form.reset();
-                loadJobs(); // Refresh the job list
+            // Previous button
+            pageButtons.push(`
+                <button class="px-3 py-1 border rounded-lg hover:bg-slate-700 disabled:opacity-50" 
+                        ${currentPage <= 1 ? 'disabled' : ''} 
+                        onclick="goToPage(${currentPage - 1})">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+            `);
+            
+            // Page number buttons
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            if (startPage > 1) {
+                pageButtons.push(`
+                    <button class="px-3 py-1 border rounded-lg hover:bg-slate-700" onclick="goToPage(1)">
+                        1
+                    </button>
+                `);
                 
-                // Reset form validation states
-                const formInputs = form.querySelectorAll('input, select, textarea');
-                formInputs.forEach(input => {
-                    input.classList.remove('error');
-                    const errorMsg = input.parentNode.querySelector('.error-message');
-                    if (errorMsg) {
-                        errorMsg.classList.remove('show');
-                    }
-                });
-            } else {
-                showToast(data?.message || "❌ Failed to post job", "danger");
+                if (startPage > 2) {
+                    pageButtons.push(`<span class="px-2">...</span>`);
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                pageButtons.push(`
+                    <button class="px-3 py-1 ${i === currentPage ? 'bg-indigo-600 text-white' : 'border rounded-lg hover:bg-slate-700'}" 
+                            onclick="goToPage(${i})">
+                        ${i}
+                    </button>
+                `);
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    pageButtons.push(`<span class="px-2">...</span>`);
+                }
+                
+                pageButtons.push(`
+                    <button class="px-3 py-1 border rounded-lg hover:bg-slate-700" onclick="goToPage(${totalPages})">
+                        ${totalPages}
+                    </button>
+                `);
+            }
+            
+            // Next button
+            pageButtons.push(`
+                <button class="px-3 py-1 border rounded-lg hover:bg-slate-700 disabled:opacity-50" 
+                        ${currentPage >= totalPages ? 'disabled' : ''} 
+                        onclick="goToPage(${currentPage + 1})">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            `);
+            
+            paginationContainer.innerHTML = pageButtons.join('');
+        }
+    }
+
+    function updateJobsCount(totalCount) {
+        if (jobsCount) {
+            const startItem = (currentPage - 1) * jobsPerPage + 1;
+            const endItem = Math.min(currentPage * jobsPerPage, totalCount);
+            
+            jobsCount.innerHTML = `
+                Showing <span class="font-medium">${startItem}-${endItem}</span> of 
+                <span class="font-medium">${totalCount}</span> results
+            `;
+        }
+    }
+
+    function goToPage(page) {
+        if (page >= 1 && page <= totalPages && page !== currentPage) {
+            currentPage = page;
+            fetchJobs();
+            
+            // Scroll to top of table
+            const tableContainer = document.querySelector('.table-container');
+            if (tableContainer) {
+                tableContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+    }
+
+    // Make goToPage globally accessible
+    window.goToPage = goToPage;
+
+    async function handleJobSubmission(e) {
+        e.preventDefault();
+        
+        if (!validateForm(jobPostingForm)) {
+            showToast("Please fix the errors in the form", "danger");
+            return;
+        }
+        
+        const submitButton = jobPostingForm.querySelector('button[type="submit"]');
+        const buttonText = submitButton.querySelector('.button-text');
+        const spinner = submitButton.querySelector('.loading-spinner');
+        
+        // Show loading state
+        buttonText.textContent = "Posting...";
+        spinner.classList.remove('hidden');
+        submitButton.disabled = true;
+        
+        const formData = {
+            title: document.getElementById('job-title').value,
+            company: document.getElementById('company').value,
+            location: document.getElementById('location').value,
+            type: document.getElementById('job-type').value,
+            salary: document.getElementById('salary').value,
+            tags: document.getElementById('tags').value,
+            description: document.getElementById('description').value,
+            requirements: document.getElementById('requirements').value,
+            application_link: document.getElementById('application-link').value
+        };
+        
+        logDebug("Submitting new job", formData);
+        
+        try {
+            const response = await apiRequest(API_ENDPOINTS.POST_JOB, 'POST', formData);
+            
+            if (response) {
+                showToast("Job posted successfully!", "success");
+                jobPostingForm.reset();
+                fetchJobs();
             }
         } catch (error) {
-            console.error('Job submission error:', error);
-            showToast("❌ Failed to post job. Please try again.", "danger");
+            logDebug("Error posting job:", error);
+            showToast("Failed to post job. Please try again.", "danger");
         } finally {
             // Reset button state
-            isLoading = false;
-            buttonText.textContent = 'Post Job';
-            buttonSpinner.classList.add('hidden');
+            buttonText.textContent = "Post Job";
+            spinner.classList.add('hidden');
             submitButton.disabled = false;
         }
     }
 
-    async function handleSearch(e) {
-        searchQuery = e.target.value.trim();
-        currentPage = 1; // Reset to first page when searching
-        
-        // Show/hide clear button
-        if (searchQuery) {
-            clearSearchBtn.classList.remove('hidden');
-        } else {
-            clearSearchBtn.classList.add('hidden');
-        }
-        
-        // Debounced search
-        if (searchQuery) {
-            await searchJobs(searchQuery);
-        } else {
-            await loadJobs();
-        }
-    }
-
-    async function searchJobs(query) {
-        showLoadingState();
-        
-        try {
-            const data = await apiRequest(`${API_ENDPOINTS.searchJobs}?q=${encodeURIComponent(query)}&page=${currentPage}&limit=${jobsPerPage}`);
-            
-            if (data) {
-                jobs = data.jobs || [];
-                updateJobsTable(jobs);
-                updateJobsCount(data.total || jobs.length, jobs.length);
-                updatePagination(data.total || jobs.length);
-            }
-        } catch (error) {
-            console.error('Search error:', error);
-            showToast("❌ Failed to search jobs", "danger");
-            showEmptyState();
-        }
-    }
-
-    async function loadJobs() {
-        showLoadingState();
-        
-        try {
-            const data = await apiRequest(API_ENDPOINTS.jobs);
-            
-            if (data) {
-                jobs = data.jobs || [];
-                updateJobsTable(jobs);
-                updateJobsCount(data.total || jobs.length, jobs.length);
-                updatePagination(data.total || jobs.length);
-            }
-        } catch (error) {
-            console.error('Load jobs error:', error);
-            showToast("❌ Failed to load jobs", "danger");
-            showEmptyState();
-        }
-    }
-
-    async function deleteJob(jobId) {
-        if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) {
+    function editJob(jobId) {
+        const job = jobs.find(j => j.id === jobId);
+        if (!job) {
+            showToast("Job not found", "danger");
             return;
         }
         
-        // Show loading state
-        const deleteBtn = document.querySelector(`.action-btn.delete[data-job-id="${jobId}"]`);
-        const originalIcon = deleteBtn.innerHTML;
-        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        deleteBtn.disabled = true;
+        currentEditingJobId = jobId;
         
-        try {
-            const data = await apiRequest(API_ENDPOINTS.deleteJob, "DELETE", null, jobId);
-            
-            if (data && data.success) {
-                showToast("🗑️ Job deleted successfully", "success");
-                loadJobs(); // Refresh the job list
-            } else {
-                showToast(data?.message || "❌ Failed to delete job", "danger");
-            }
-        } catch (error) {
-            console.error('Delete job error:', error);
-            showToast("❌ Failed to delete job", "danger");
-        } finally {
-            // Reset button state
-            deleteBtn.innerHTML = originalIcon;
-            deleteBtn.disabled = false;
-        }
-    }
-
-    async function editJob(jobId) {
-        // Show loading state
-        const editBtn = document.querySelector(`.action-btn.edit[data-job-id="${jobId}"]`);
-        const originalIcon = editBtn.innerHTML;
-        editBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        editBtn.disabled = true;
+        // Populate form fields
+        document.getElementById('edit-job-title').value = job.title || '';
+        document.getElementById('edit-company').value = job.company || '';
+        document.getElementById('edit-location').value = job.location || '';
+        document.getElementById('edit-job-type').value = job.type || '';
+        document.getElementById('edit-salary').value = job.salary || '';
+        document.getElementById('edit-tags').value = job.tags || '';
+        document.getElementById('edit-description').value = job.description || '';
+        document.getElementById('edit-requirements').value = job.requirements || '';
+        document.getElementById('edit-application-link').value = job.application_link || '';
         
-        try {
-            const data = await apiRequest(API_ENDPOINTS.getJob, "GET", null, jobId);
-            
-            if (data) {
-                // Populate the edit form
-                editJobForm['edit-job-title'].value = data.title;
-                editJobForm['edit-company'].value = data.company;
-                editJobForm['edit-location'].value = data.location;
-                editJobForm['edit-job-type'].value = data.type;
-                editJobForm['edit-salary'].value = data.salary;
-                editJobForm['edit-tags'].value = Array.isArray(data.tags) ? data.tags.join(', ') : data.tags;
-                editJobForm['edit-description'].value = data.description;
-                editJobForm['edit-requirements'].value = data.requirements;
-                editJobForm['edit-application-link'].value = data.application_link;
-                
-                // Store the job ID
-                currentEditingJobId = jobId;
-                
-                // Show the modal
-                editJobModal.classList.remove('hidden');
-                
-                // Prevent body scroll when modal is open on mobile
-                document.body.style.overflow = 'hidden';
-                
-                // Focus on first input
-                setTimeout(() => {
-                    editJobForm['edit-job-title'].focus();
-                }, 100);
-            } else {
-                showToast("❌ Failed to load job details", "danger");
-            }
-        } catch (error) {
-            console.error('Edit job error:', error);
-            showToast("❌ Failed to load job details", "danger");
-        } finally {
-            // Reset button state
-            editBtn.innerHTML = originalIcon;
-            editBtn.disabled = false;
+        // Show modal
+        if (editJobModal) {
+            editJobModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
+        
+        logDebug("Opening edit job modal", { jobId, job });
     }
 
     async function handleEditJobSubmission(e) {
         e.preventDefault();
         
-        if (isLoading) return;
-        
-        // Validate form before submission
         if (!validateForm(editJobForm)) {
-            showToast("⚠️ Please fix the errors in the form", "warning");
+            showToast("Please fix the errors in the form", "danger");
             return;
         }
         
-        const form = e.target;
-        const submitButton = form.querySelector('button[type="submit"]');
+        const submitButton = editJobForm.querySelector('button[type="submit"]');
         const buttonText = submitButton.querySelector('.button-text');
-        const buttonSpinner = submitButton.querySelector('.loading-spinner');
+        const spinner = submitButton.querySelector('.loading-spinner');
         
-        // Collect form data
-        const jobData = {
-            title: form['edit-job-title'].value.trim(),
-            company: form['edit-company'].value.trim(),
-            location: form['edit-location'].value.trim(),
-            type: form['edit-job-type'].value,
-            salary: form['edit-salary'].value.trim(),
-            tags: form['edit-tags'].value.trim().split(',').map(tag => tag.trim()).filter(tag => tag),
-            description: form['edit-description'].value.trim(),
-            requirements: form['edit-requirements'].value.trim(),
-            application_link: form['edit-application-link'].value.trim()
-        };
-
         // Show loading state
-        isLoading = true;
-        buttonText.textContent = 'Updating...';
-        buttonSpinner.classList.remove('hidden');
+        buttonText.textContent = "Updating...";
+        spinner.classList.remove('hidden');
         submitButton.disabled = true;
-
+        
+        const formData = {
+            title: document.getElementById('edit-job-title').value,
+            company: document.getElementById('edit-company').value,
+            location: document.getElementById('edit-location').value,
+            type: document.getElementById('edit-job-type').value,
+            salary: document.getElementById('edit-salary').value,
+            tags: document.getElementById('edit-tags').value,
+            description: document.getElementById('edit-description').value,
+            requirements: document.getElementById('edit-requirements').value,
+            application_link: document.getElementById('edit-application-link').value
+        };
+        
+        logDebug("Updating job", { jobId: currentEditingJobId, formData });
+        
         try {
-            const data = await apiRequest(API_ENDPOINTS.updateJob, "PUT", jobData, currentEditingJobId);
+            const response = await apiRequest(API_ENDPOINTS.UPDATE_JOB, 'PUT', formData, currentEditingJobId);
             
-            if (data && data.success) {
-                showToast("✅ Job updated successfully!", "success");
+            if (response) {
+                showToast("Job updated successfully!", "success");
                 closeEditJobModal();
-                loadJobs(); // Refresh the job list
-            } else {
-                showToast(data?.message || "❌ Failed to update job", "danger");
+                fetchJobs();
             }
         } catch (error) {
-            console.error('Job update error:', error);
-            showToast("❌ Failed to update job. Please try again.", "danger");
+            logDebug("Error updating job:", error);
+            showToast("Failed to update job. Please try again.", "danger");
         } finally {
             // Reset button state
-            isLoading = false;
-            buttonText.textContent = 'Update Job';
-            buttonSpinner.classList.add('hidden');
+            buttonText.textContent = "Update Job";
+            spinner.classList.add('hidden');
             submitButton.disabled = false;
         }
     }
 
     function closeEditJobModal() {
-        editJobModal.classList.add('hidden');
-        editJobForm.reset();
-        
-        // Reset validation states
-        const formInputs = editJobForm.querySelectorAll('input, select, textarea');
-        formInputs.forEach(input => {
-            input.classList.remove('error');
-            const errorMsg = input.parentNode.querySelector('.error-message');
-            if (errorMsg) {
-                errorMsg.classList.remove('show');
-            }
-        });
-        
-        // Restore body scroll
-        document.body.style.overflow = '';
+        if (editJobModal) {
+            editJobModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
         
         currentEditingJobId = null;
+        
+        // Clear any form errors
+        const errorMessages = editJobForm.querySelectorAll('.error-message');
+        errorMessages.forEach(msg => msg.classList.remove('show'));
+        
+        const errorInputs = editJobForm.querySelectorAll('.form-control.error');
+        errorInputs.forEach(input => input.classList.remove('error'));
     }
 
-    // =======================
-    // Enhanced UI Update Functions
-    // =======================
-    function updateJobsTable(jobs) {
-        if (!jobs || jobs.length === 0) {
-            showEmptyState();
-            return;
+    function confirmDeleteJob(jobId) {
+        const job = jobs.find(j => j.id === jobId);
+        if (!job) return;
+        
+        if (confirm(`Are you sure you want to delete "${job.title}"? This action cannot be undone.`)) {
+            deleteJob(jobId);
         }
-
-        jobsTableBody.innerHTML = '';
-        
-        jobs.forEach(job => {
-            const row = document.createElement('tr');
-            row.className = 'job-row';
-            
-            // Format tags for display
-            let tagsHtml = '';
-            if (job.tags && Array.isArray(job.tags)) {
-                tagsHtml = job.tags.map(tag => 
-                    `<span class="tag-badge">${escapeHtml(tag)}</span>`
-                ).join('');
-            }
-            
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${escapeHtml(job.title)}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-500">${escapeHtml(job.company)}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-500">${escapeHtml(job.location)}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="badge ${getJobTypeBadgeClass(job.type)}">${escapeHtml(job.type)}</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${formatDate(job.posted_date)}
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex flex-wrap">
-                        ${tagsHtml}
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button class="action-btn edit" title="Edit" data-job-id="${job.id}">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="action-btn delete" title="Delete" data-job-id="${job.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            
-            // Add event listeners to action buttons
-            const editBtn = row.querySelector('.action-btn.edit');
-            const deleteBtn = row.querySelector('.action-btn.delete');
-            
-            if (editBtn) {
-                editBtn.addEventListener('click', () => editJob(job.id));
-            }
-            
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => deleteJob(job.id));
-            }
-            
-            jobsTableBody.appendChild(row);
-        });
     }
 
-    function updateJobsCount(total, showing) {
-        jobsCount.innerHTML = `Showing <span class="font-medium">${showing}</span> of <span class="font-medium">${total}</span> results`;
+    async function deleteJob(jobId) {
+        logDebug("Deleting job", { jobId });
+        
+        try {
+            const response = await apiRequest(API_ENDPOINTS.DELETE_JOB, 'DELETE', null, jobId);
+            
+            if (response) {
+                showToast("Job deleted successfully", "success");
+                fetchJobs();
+            }
+        } catch (error) {
+            logDebug("Error deleting job:", error);
+            showToast("Failed to delete job. Please try again.", "danger");
+        }
     }
 
-    function updatePagination(totalJobs) {
-        const totalPages = Math.ceil(totalJobs / jobsPerPage);
-        const pagination = document.getElementById('pagination');
+    function handleSearch() {
+        searchQuery = searchInput.value.trim();
+        currentPage = 1; // Reset to first page when searching
         
-        if (!pagination) return;
-        
-        pagination.innerHTML = '';
-        
-        // Previous button
-        const prevBtn = document.createElement('button');
-        prevBtn.className = `px-3 py-1 border rounded-lg hover:bg-slate-700 ${currentPage === 1 ? 'disabled:opacity-50' : ''}`;
-        prevBtn.disabled = currentPage === 1;
-        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Previous';
-        prevBtn.addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                searchQuery ? searchJobs(searchQuery) : loadJobs();
-            }
-        });
-        pagination.appendChild(prevBtn);
-        
-        // Page numbers
-        for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-            const pageBtn = document.createElement('button');
-            pageBtn.className = `px-3 py-1 ${i === currentPage ? 'bg-indigo-600 text-white' : 'border rounded-lg hover:bg-slate-700'}`;
-            pageBtn.textContent = i;
-            pageBtn.addEventListener('click', () => {
-                currentPage = i;
-                searchQuery ? searchJobs(searchQuery) : loadJobs();
-            });
-            pagination.appendChild(pageBtn);
+        // Show/hide clear button
+        if (clearSearchBtn) {
+            clearSearchBtn.classList.toggle('hidden', !searchQuery);
         }
         
-        // Next button
-        const nextBtn = document.createElement('button');
-        nextBtn.className = `px-3 py-1 border rounded-lg hover:bg-slate-700 ${currentPage === totalPages ? 'disabled:opacity-50' : ''}`;
-        nextBtn.disabled = currentPage === totalPages;
-        nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
-        nextBtn.addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                searchQuery ? searchJobs(searchQuery) : loadJobs();
-            }
-        });
-        pagination.appendChild(nextBtn);
-    }
-
-    function showLoadingState() {
-        jobsTableBody.innerHTML = `
-            <tr class="loading-row">
-                <td colspan="7" class="px-6 py-4 text-center">
-                    <div class="flex justify-center items-center">
-                        <div class="loading-spinner"></div>
-                        <span class="ml-2">Loading jobs...</span>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-
-    function showEmptyState() {
-        jobsTableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="px-6 py-4 text-center">
-                    <div class="text-center py-8">
-                        <i class="fas fa-briefcase text-gray-300 text-4xl mb-3"></i>
-                        <p class="text-gray-500">No jobs found</p>
-                        ${searchQuery ? `<button class="mt-2 text-indigo-600 hover:text-indigo-800" onclick="clearSearch()">Clear search</button>` : ''}
-                    </div>
-                </td>
-            </tr>
-        `;
+        logDebug("Searching jobs", { searchQuery });
+        fetchJobs();
     }
 
     function clearSearch() {
-        searchInput.value = '';
-        searchQuery = '';
-        currentPage = 1;
-        clearSearchBtn.classList.add('hidden');
-        loadJobs();
+        if (searchInput) {
+            searchInput.value = '';
+            searchQuery = '';
+            currentPage = 1;
+            
+            if (clearSearchBtn) {
+                clearSearchBtn.classList.add('hidden');
+            }
+            
+            logDebug("Clearing search");
+            fetchJobs();
+        }
     }
 
-    // =======================
-    // Enhanced Toast Notifications
-    // =======================
-    function showToast(message, type = "info") {
+    // ===============================
+    // Form Validation
+    // ===============================
+    function validateForm(form) {
+        const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+        let isValid = true;
+        formErrors = {};
+        
+        inputs.forEach(input => {
+            if (!validateField(input)) {
+                isValid = false;
+                formErrors[input.name] = true;
+            }
+        });
+        
+        logDebug("Form validation", { isValid, errors: formErrors });
+        return isValid;
+    }
+
+    function validateField(input) {
+        const value = input.value.trim();
+        const fieldName = input.name;
+        const errorElement = input.parentNode.querySelector('.error-message');
+        
+        // Reset error state
+        input.classList.remove('error');
+        if (errorElement) errorElement.classList.remove('show');
+        
+        // Required field validation
+        if (input.hasAttribute('required') && !value) {
+            showFieldError(input, errorElement, 'This field is required');
+            return false;
+        }
+        
+        // Email validation
+        if (input.type === 'email' && value) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+                showFieldError(input, errorElement, 'Please enter a valid email address');
+                return false;
+            }
+        }
+        
+        // URL validation
+        if (input.type === 'url' && value) {
+            try {
+                new URL(value);
+            } catch (e) {
+                showFieldError(input, errorElement, 'Please enter a valid URL');
+                return false;
+            }
+        }
+        
+        // Application link/email validation
+        if (fieldName === 'application-link' && value) {
+            const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+            const isUrl = /^https?:\/\/.+/.test(value);
+            
+            if (!isEmail && !isUrl) {
+                showFieldError(input, errorElement, 'Please enter a valid email or URL');
+                return false;
+            }
+        }
+        
+        // Custom validation for specific fields
+        if (fieldName === 'salary' && value) {
+            // Check if salary is in a reasonable format (e.g., "KSh 50,000 - 80,000")
+            const salaryRegex = /^(KSh\s)?\d{1,3}(,\d{3})*(\s*-\s*\d{1,3}(,\d{3)*)?$/;
+            if (!salaryRegex.test(value)) {
+                showFieldError(input, errorElement, 'Please enter a valid salary range (e.g., KSh 50,000 - 80,000)');
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    function showFieldError(input, errorElement, message) {
+        input.classList.add('error');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.classList.add('show');
+        }
+    }
+
+    // ===============================
+    // UI Helper Functions
+    // ===============================
+    function toggleSidebar() {
+        if (sidebar) {
+            sidebar.classList.toggle('open');
+            
+            if (sidebarOverlay) {
+                sidebarOverlay.classList.toggle('show');
+            }
+            
+            // Update menu toggle button state
+            if (menuToggle) {
+                menuToggle.setAttribute('aria-expanded', sidebar.classList.contains('open'));
+            }
+            
+            logDebug("Toggling sidebar", { isOpen: sidebar.classList.contains('open') });
+        }
+    }
+
+    function closeSidebar() {
+        if (sidebar && sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            
+            if (sidebarOverlay) {
+                sidebarOverlay.classList.remove('show');
+            }
+            
+            // Update menu toggle button state
+            if (menuToggle) {
+                menuToggle.setAttribute('aria-expanded', 'false');
+            }
+            
+            logDebug("Closing sidebar");
+        }
+    }
+
+    function setLoadingState(loading) {
+        isLoading = loading;
+        
+        // Update loading spinners
+        const spinners = document.querySelectorAll('.loading-spinner');
+        spinners.forEach(spinner => {
+            spinner.classList.toggle('hidden', !loading);
+        });
+        
+        // Update loading rows
+        const loadingRows = document.querySelectorAll('.loading-row');
+        loadingRows.forEach(row => {
+            row.classList.toggle('hidden', !loading);
+        });
+        
+        // Disable/enable forms during loading
+        if (jobPostingForm) jobPostingForm.style.opacity = loading ? '0.7' : '1';
+        if (editJobForm) editJobForm.style.opacity = loading ? '0.7' : '1';
+    }
+
+    function formatDate(dateString) {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // ===============================
+    // Toast Notifications
+    // ===============================
+    function showToast(message, type = "info", error = null) {
         const toastContainer = document.querySelector('.toast-container') || createToastContainer();
         const toast = document.createElement('div');
         
@@ -810,12 +1052,25 @@ document.addEventListener('DOMContentLoaded', () => {
             info: "bg-blue-600"
         };
         
+        let debugInfo = '';
+        if (DEBUG_MODE && error) {
+            debugInfo = `
+                <div class="debug-error-details">
+                    <strong>Error Details:</strong>
+                    <pre>${escapeHtml(error.stack || error.toString())}</pre>
+                </div>
+            `;
+        }
+        
         toast.className = `toast ${colors[type] || colors.info}`;
         toast.setAttribute('role', 'alert');
         toast.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas ${icons[type] || icons.info} mr-3"></i>
-                <div class="toast-body">${message}</div>
+            <div class="flex items-start">
+                <i class="fas ${icons[type] || icons.info} mr-3 mt-1"></i>
+                <div class="toast-body">
+                    <div>${message}</div>
+                    ${debugInfo}
+                </div>
                 <button type="button" class="text-white hover:text-gray-200 ml-4" onclick="this.parentElement.parentElement.remove()">
                     <i class="fas fa-times"></i>
                 </button>
@@ -840,78 +1095,164 @@ document.addEventListener('DOMContentLoaded', () => {
         return container;
     }
 
-    // =======================
-    // Enhanced Sidebar Toggle (Mobile)
-    // =======================
-    function toggleSidebar() {
-        sidebar.classList.toggle('open');
-        sidebarOverlay.classList.toggle('show');
-        
-        // Prevent body scroll when sidebar is open on mobile
-        if (window.innerWidth <= 768) {
-            if (sidebar.classList.contains('open')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
-        }
-    }
-
-    function closeSidebar() {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('show');
-        
-        // Restore body scroll
-        document.body.style.overflow = '';
-    }
-
-    // =======================
-    // Enhanced Utility Functions
-    // =======================
-    function getCookie(name) {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(`${name}=`)) {
-                return decodeURIComponent(cookie.substring(name.length + 1));
-            }
-        }
-        return null;
-    }
-
-    function debounce(func, delay) {
+    // ===============================
+    // Utility Functions
+    // ===============================
+    function debounce(func, wait) {
         let timeout;
         return function(...args) {
             clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), delay);
+            timeout = setTimeout(() => func.apply(this, args), wait);
         };
     }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-        
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined, options);
-    }
-
-    function getJobTypeBadgeClass(type) {
-        const typeClasses = {
-            'Full-time': 'bg-green-100 text-green-800',
-            'Part-time': 'bg-blue-100 text-blue-800',
-            'Contract': 'bg-yellow-100 text-yellow-800',
-            'Internship': 'bg-purple-100 text-purple-800',
-            'Remote': 'bg-indigo-100 text-indigo-800'
-        };
-        
-        return typeClasses[type] || 'bg-gray-100 text-gray-800';
-    }
+    // ===============================
+    // Initialize
+    // ===============================
+    checkServerStatus();
+    fetchJobs();
 
     // Expose clearSearch function globally for the empty state button
     window.clearSearch = clearSearch;
+    window.editJob = editJob;
+    window.confirmDeleteJob = confirmDeleteJob;
 });
+
+// ===============================
+// Debug CSS (for development only)
+// ===============================
+if (DEBUG_MODE) {
+    const debugStyles = document.createElement('style');
+    debugStyles.textContent = `
+        .debug-mode {
+            --debug-bg: #1e293b;
+            --debug-border: #334155;
+            --debug-text: #e2e8f0;
+        }
+        
+        .debug-panel {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 400px;
+            max-height: 50vh;
+            background: var(--debug-bg);
+            border: 1px solid var(--debug-border);
+            color: var(--debug-text);
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 9999;
+            overflow: auto;
+            padding: 10px;
+            border-radius: 0.5rem 0 0 0;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .debug-info {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--debug-border);
+        }
+        
+        .debug-info h4 {
+            margin: 0 0 5px 0;
+            color: #60a5fa;
+        }
+        
+        .debug-logs {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .debug-log {
+            margin-bottom: 10px;
+            padding: 5px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+        
+        .debug-timestamp {
+            color: #94a3b8;
+            font-size: 10px;
+        }
+        
+        .debug-message {
+            margin: 2px 0;
+            color: #f8fafc;
+        }
+        
+        .debug-data {
+            margin: 5px 0 0 0;
+            padding: 5px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 3px;
+            overflow-x: auto;
+            font-size: 10px;
+        }
+        
+        .debug-error-details {
+            margin-top: 10px;
+            padding: 5px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 3px;
+            border-left: 3px solid #ef4444;
+        }
+        
+        .debug-error-details pre {
+            margin: 5px 0 0 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .debug-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            z-index: 10000;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .debug-toggle label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .debug-toggle input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+        }
+        
+        .debug-toggle .block {
+            width: 3.5rem;
+            height: 1.75rem;
+            background: #4b5563;
+            border-radius: 9999px;
+            position: relative;
+            transition: background 0.3s;
+        }
+        
+        .debug-toggle input[type="checkbox"]:checked + .block {
+            background: var(--gradient);
+        }
+        
+        .debug-toggle .dot {
+            position: absolute;
+            top: 0.25rem;
+            left: 0.25rem;
+            width: 1.25rem;
+            height: 1.25rem;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .debug-toggle input[type="checkbox"]:checked + .block .dot {
+            transform: translateX(1.75rem);
+        }
+    `;
+    document.head.appendChild(debugStyles);
+}
