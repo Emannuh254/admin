@@ -1,19 +1,48 @@
+const API_BASE = "https://server-jobs-2.onrender.com/api";
+
 // ===============================
 // Debug Configuration
 // ===============================
 const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === 'true';
 
 // ===============================
+// Authentication Handling
+// ===============================
+function checkAuth() {
+    const isLoggedIn = localStorage.getItem('authToken') !== null;
+    const isLoginPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
+    if (!isLoggedIn && !isLoginPage) {
+        window.location.href = 'index.html';
+    }
+    return isLoggedIn;
+}
+
+function logout() {
+    localStorage.removeItem('authToken');
+    showToast("Logged out successfully", "success");
+    window.location.href = 'index.html';
+}
+
+function login(username, password) {
+    // Placeholder for future backend auth
+    if (username === 'admin' && password === '1234') {
+        localStorage.setItem('authToken', 'dummy-token-' + Math.random().toString(36).substring(2));
+        return true;
+    }
+    return false;
+}
+
+// ===============================
 // API Endpoints
 // ===============================
-const API_BASE = "http://127.0.0.1:8000/api";
 const API_ENDPOINTS = {
     GET_JOBS: `${API_BASE}/jobs/`,
     POST_JOB: `${API_BASE}/jobs/post/`,
     SEARCH_JOBS: `${API_BASE}/jobs/`,
     GET_JOB: (id) => `${API_BASE}/jobs/${id}/`,
     UPDATE_JOB: (id) => `${API_BASE}/jobs/${id}/`,
-    DELETE_JOB: (id) => `${API_BASE}/jobs/${id}/`
+    DELETE_JOB: (id) => `${API_BASE}/jobs/${id}/`,
+    HEALTH_CHECK: `${API_BASE}/health`
 };
 
 // ===============================
@@ -52,7 +81,8 @@ function cacheElements() {
         debugContent: document.getElementById('debug-content'),
         debugCloseBtn: document.getElementById('debug-close'),
         prevPageBtn: document.getElementById('prev-page'),
-        nextPageBtn: document.getElementById('next-page')
+        nextPageBtn: document.getElementById('next-page'),
+        logoutBtn: document.getElementById('logout-btn')
     };
 }
 
@@ -113,7 +143,8 @@ const apiService = {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Authorization': localStorage.getItem('authToken') ? `Bearer ${localStorage.getItem('authToken')}` : ''
                 },
                 signal: controller.signal
             };
@@ -149,6 +180,10 @@ const apiService = {
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
+                if (response.status === 401 || response.status === 403) {
+                    logout();
+                    throw new Error('Unauthorized access. Redirecting to login.');
+                }
                 throw new Error(data.message || data.detail || `HTTP error! status: ${response.status}`);
             }
 
@@ -196,6 +231,10 @@ const apiService = {
 
     async deleteJob(id) {
         return apiService.request(API_ENDPOINTS.DELETE_JOB, 'DELETE', null, id);
+    },
+
+    async checkHealth() {
+        return apiService.request(API_ENDPOINTS.HEALTH_CHECK, 'GET');
     }
 };
 
@@ -396,6 +435,7 @@ function addDebugInfo() {
             <p><strong>Loading State:</strong> ${utils.escapeHtml(state.isLoading.toString())}</p>
             <p><strong>Current Editing Job:</strong> ${utils.escapeHtml(state.currentEditingJobId?.toString() || 'None')}</p>
             <p><strong>Total Jobs:</strong> ${utils.escapeHtml(state.jobs.length.toString())}</p>
+            <p><strong>Logged In:</strong> ${utils.escapeHtml(checkAuth().toString())}</p>
         </div>
     `);
     
@@ -424,6 +464,7 @@ function updateDebugPanel() {
             <p><strong>Loading State:</strong> ${utils.escapeHtml(state.isLoading.toString())}</p>
             <p><strong>Current Editing Job:</strong> ${utils.escapeHtml(state.currentEditingJobId?.toString() || 'None')}</p>
             <p><strong>Total Jobs:</strong> ${utils.escapeHtml(state.jobs.length.toString())}</p>
+            <p><strong>Logged In:</strong> ${utils.escapeHtml(checkAuth().toString())}</p>
         </div>
         <div class="debug-logs">
             <h4>Debug Logs</h4>
@@ -490,6 +531,7 @@ function showToast(message, type = "info", error = null) {
 const eventHandlers = {
     handleJobSubmission: async (e) => {
         e.preventDefault();
+        if (!checkAuth()) return;
         if (!validation.validateForm(state.elements.jobPostingForm)) {
             showToast("Please fill out all required fields", "warning");
             return;
@@ -529,6 +571,7 @@ const eventHandlers = {
 
     handleEditJobSubmission: async (e) => {
         e.preventDefault();
+        if (!checkAuth()) return;
         if (!validation.validateForm(state.elements.editJobForm)) {
             showToast("Please fill out all required fields", "warning");
             return;
@@ -583,6 +626,7 @@ const eventHandlers = {
     },
 
     handleDeleteJob: async (jobId) => {
+        if (!checkAuth()) return;
         if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
 
         uiService.setLoading(true);
@@ -603,6 +647,7 @@ const eventHandlers = {
     },
 
     handleEditJob: async (jobId) => {
+        if (!checkAuth()) return;
         state.currentEditingJobId = jobId;
         logDebug("Opening edit modal for job", { id: jobId });
 
@@ -619,9 +664,31 @@ const eventHandlers = {
     },
 
     handlePageChange: (page) => {
+        if (!checkAuth()) return;
         if (page < 1) return;
         state.currentPage = page;
         fetchJobs();
+    },
+
+    handleLogout: () => {
+        logout();
+    },
+
+    handleLogin: (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username')?.value;
+        const password = document.getElementById('password')?.value;
+        
+        if (login(username, password)) {
+            showToast("Login successful! Redirecting...", "success");
+            setTimeout(() => {
+                window.location.href = 'admin.html';
+            }, 1500);
+        } else {
+            showToast("Invalid username or password", "danger");
+            document.getElementById('password').value = '';
+            document.getElementById('password').focus();
+        }
     },
 
     handleKeyboardShortcuts: (e) => {
@@ -664,7 +731,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle delegated events
     handleDelegatedClick: (e) => {
         const target = e.target.closest('[data-action]');
         if (!target) return;
@@ -682,6 +748,9 @@ const eventHandlers = {
             case 'clear-search':
                 eventHandlers.handleClearSearch();
                 break;
+            case 'logout':
+                eventHandlers.handleLogout();
+                break;
         }
     }
 };
@@ -690,6 +759,7 @@ const eventHandlers = {
 // Main Functions
 // ===============================
 async function fetchJobs() {
+    if (!checkAuth()) return;
     uiService.setLoading(true);
     
     try {
@@ -724,17 +794,13 @@ async function checkServerStatus() {
         attempts++;
         try {
             logDebug(`Health check attempt ${attempts}/${maxAttempts}`);
-            const response = await fetch(API_ENDPOINTS.GET_JOBS, {
-                method: "GET",
-                headers: { 'Accept': 'application/json' }
-            });
-
-            if (response.ok) {
+            const response = await apiService.checkHealth();
+            if (response && response.status === 'healthy') {
                 showToast("✅ Server is online", "success");
                 logDebug("Server health check successful");
                 return true;
             } else {
-                showToast(`⚠️ Server responded with ${response.status}`, "warning");
+                showToast(`⚠️ Server responded with unexpected status`, "warning");
                 if (attempts < maxAttempts) {
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
@@ -773,11 +839,19 @@ function toggleDebugMode() {
 // Initialization
 // ===============================
 function initEventListeners() {
+    // Check authentication first
+    checkAuth();
+
+    // Login form (for index.html)
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', eventHandlers.handleLogin);
+    }
+
     // Job posting form
     if (state.elements.jobPostingForm) {
         state.elements.jobPostingForm.addEventListener('submit', eventHandlers.handleJobSubmission);
         
-        // Form field validation
         state.elements.jobPostingForm.querySelectorAll('input, select, textarea').forEach(input => {
             input.addEventListener('blur', () => validation.validateField(input));
             input.addEventListener('input', () => {
@@ -828,6 +902,11 @@ function initEventListeners() {
     // Mobile menu toggle
     if (state.elements.mobileMenuToggle) {
         state.elements.mobileMenuToggle.addEventListener('click', uiService.toggleSidebar);
+    }
+
+    // Logout button
+    if (state.elements.logoutBtn) {
+        state.elements.logoutBtn.addEventListener('click', eventHandlers.handleLogout);
     }
 
     // Debug panel
@@ -882,14 +961,17 @@ function init() {
 
     initEventListeners();
     
-    // Check server status and fetch jobs
-    checkServerStatus().then(isOnline => {
-        if (isOnline) {
-            fetchJobs();
-        } else {
-            showToast("Unable to connect to server. Please check your connection.", "danger");
-        }
-    });
+    // Check server status and fetch jobs if authenticated and not on login page
+    const isLoginPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
+    if (!isLoginPage) {
+        checkServerStatus().then(isOnline => {
+            if (isOnline && checkAuth()) {
+                fetchJobs();
+            } else if (!isOnline) {
+                showToast("Unable to connect to server. Please check your connection.", "danger");
+            }
+        });
+    }
 }
 
 // ===============================
@@ -909,6 +991,7 @@ document.addEventListener('DOMContentLoaded', init);
 window.clearSearch = eventHandlers.handleClearSearch;
 window.openEditJobModal = eventHandlers.handleEditJob;
 window.handleDeleteJob = eventHandlers.handleDeleteJob;
+window.logout = eventHandlers.handleLogout;
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', cleanup);
