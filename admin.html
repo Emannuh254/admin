@@ -8,64 +8,116 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Admin Panel - Derrick Mawira Jobs Parlour</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="admin.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+
 </head>
-<body class="bg-gray-900">
-    <!-- Skip to main content link for accessibility -->
+<body>
+    <!-- Skip to main content link -->
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-indigo-600 text-white px-4 py-2 rounded">Skip to main content</a>
 
-    <!-- Mobile Topbar -->
-    <div class="mobile-topbar" role="navigation" aria-label="Mobile navigation">
-        <button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="sidebar">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-        <h1>Admin Panel</h1>
-        <div></div> <!-- Empty div for spacing -->
-    </div>
-
-    <!-- Sidebar Overlay for Mobile -->
-    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+    <!-- Top Navigation Bar -->
+    <nav class="top-navbar">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="nav-brand ml-4">
+                    <i class="fas fa-briefcase"></i>
+                    <span>Jobs Parlour Admin</span>
+                </div>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="#" class="nav-link active" aria-current="page">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-briefcase"></i>
+                    <span>Job Postings</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <button class="notification-btn" aria-label="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge"></span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="Admin profile picture" class="user-avatar">
+                    <span class="font-medium">Admin User</span>
+                    <a href="login.html" class="text-gray-400 hover:text-white" aria-label="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
-        <div class="sidebar-close">
-            <button id="close-sidebar" aria-label="Close sidebar">
-                <i class="fas fa-times"></i>
-            </button>
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">
+                <i class="fas fa-tachometer-alt"></i>
+                Dashboard
+            </h2>
         </div>
         <nav>
-            <ul class="space-y-2" role="menubar">
+            <ul class="space-y-1" role="menubar">
                 <li role="none">
-                    <a href="#" class="sidebar-link flex items-center space-x-3 p-3 rounded-lg bg-indigo-900 text-indigo-200 font-medium active" role="menuitem" aria-current="page">
-                        <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
-                        <span>Dashboard</span>
+                    <a href="#" class="sidebar-link active" role="menuitem" aria-current="page">
+                        <i class="fas fa-home"></i>
+                        <span>Overview</span>
                     </a>
                 </li>
                 <li role="none">
-                    <a href="#" class="sidebar-link flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-700" role="menuitem">
-                        <i class="fas fa-briefcase" aria-hidden="true"></i>
-                        <span>Job Postings</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" class="sidebar-link flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-700" role="menuitem">
-                        <i class="fas fa-users" aria-hidden="true"></i>
-                        <span>Users</span>
-                    </a>
-                </li>
-                <li role="none">
-                    <a href="#" class="sidebar-link flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-700" role="menuitem">
-                        <i class="fas fa-chart-bar" aria-hidden="true"></i>
+                    <a href="#" class="sidebar-link" role="menuitem">
+                        <i class="fas fa-chart-line"></i>
                         <span>Analytics</span>
                     </a>
                 </li>
                 <li role="none">
-                    <a href="#" class="sidebar-link flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-700" role="menuitem">
-                        <i class="fas fa-cog" aria-hidden="true"></i>
+                    <a href="#" class="sidebar-link" role="menuitem">
+                        <i class="fas fa-briefcase"></i>
+                        <span>Job Listings</span>
+                    </a>
+                </li>
+                <li role="none">
+                    <a href="#" class="sidebar-link" role="menuitem">
+                        <i class="fas fa-users"></i>
+                        <span>User Management</span>
+                    </a>
+                </li>
+                <li role="none">
+                    <a href="#" class="sidebar-link" role="menuitem">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Applications</span>
+                    </a>
+                </li>
+                <li role="none">
+                    <a href="#" class="sidebar-link" role="menuitem">
+                        <i class="fas fa-comments"></i>
+                        <span>Messages</span>
+                    </a>
+                </li>
+                <li role="none">
+                    <a href="#" class="sidebar-link" role="menuitem">
+                        <i class="fas fa-cog"></i>
                         <span>Settings</span>
                     </a>
                 </li>
@@ -73,279 +125,243 @@
         </nav>
     </aside>
 
-    <!-- Admin Header (Desktop) -->
-    <header class="text-white shadow-md sticky top-0 z-50 hidden md:block" role="banner">
-        <div class="container mx-auto px-4 py-3">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="stat-icon">
-                        <i class="fas fa-briefcase text-indigo-300" aria-hidden="true"></i>
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <!-- Stats Section -->
+        <section aria-labelledby="stats-heading">
+            <h2 id="stats-heading" class="sr-only">Dashboard Statistics</h2>
+            <div class="stats-grid">
+                <article class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <h3 class="stat-title">Total Jobs</h3>
+                            <p class="stat-value" id="total-jobs">248</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-briefcase text-indigo-400"></i>
+                        </div>
                     </div>
-                    <span class="text-xl font-bold">Admin Panel</span>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>12.5% from last month</span>
+                    </div>
+                </article>
+                
+                <article class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <h3 class="stat-title">Total Users</h3>
+                            <p class="stat-value" id="total-users">1,842</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-users text-green-400"></i>
+                        </div>
+                    </div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>8.2% from last month</span>
+                    </div>
+                </article>
+                
+                <article class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <h3 class="stat-title">Applications</h3>
+                            <p class="stat-value" id="total-applications">3,241</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-file-alt text-blue-400"></i>
+                        </div>
+                    </div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>5.7% from last month</span>
+                    </div>
+                </article>
+                
+                <article class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <h3 class="stat-title">Revenue</h3>
+                            <p class="stat-value" id="total-revenue">KSh 428K</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-coins text-purple-400"></i>
+                        </div>
+                    </div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>10.3% from last month</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Job Posting Form -->
+        <section class="content-section" aria-labelledby="job-form-heading">
+            <div class="section-header">
+                <h2 id="job-form-heading" class="section-title">Post a New Job</h2>
+                <button class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i>
+                    Quick Post
+                </button>
+            </div>
+            
+            <form id="job-posting-form" novalidate>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        <label class="form-label" for="job-title">Job Title <span class="text-red-400" aria-hidden="true">*</span></label>
+                        <input type="text" id="job-title" name="job-title" class="form-control" required aria-required="true" aria-describedby="job-title-error">
+                        <div id="job-title-error" class="error-message" role="alert"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="company">Company <span class="text-red-400" aria-hidden="true">*</span></label>
+                        <input type="text" id="company" name="company" class="form-control" required aria-required="true" aria-describedby="company-error">
+                        <div id="company-error" class="error-message" role="alert"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="location">Location <span class="text-red-400" aria-hidden="true">*</span></label>
+                        <input type="text" id="location" name="location" class="form-control" required aria-required="true" aria-describedby="location-error">
+                        <div id="location-error" class="error-message" role="alert"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="job-type">Job Type <span class="text-red-400" aria-hidden="true">*</span></label>
+                        <select id="job-type" name="job-type" class="form-control" required aria-required="true" aria-describedby="job-type-error">
+                            <option value="">Select Job Type</option>
+                            <option value="Full-time">Full-time</option>
+                            <option value="Part-time">Part-time</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Internship">Internship</option>
+                            <option value="Remote">Remote</option>
+                        </select>
+                        <div id="job-type-error" class="error-message" role="alert"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="salary">Salary Range <span class="text-red-400" aria-hidden="true">*</span></label>
+                        <input type="text" id="salary" name="salary" placeholder="e.g., KSh 50,000 - 80,000" class="form-control" required aria-required="true" aria-describedby="salary-error">
+                        <div id="salary-error" class="error-message" role="alert"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="tags">Tags (comma separated)</label>
+                        <input type="text" id="tags" name="tags" placeholder="e.g., JavaScript, React, Node.js" class="form-control" aria-describedby="tags-error">
+                        <div id="tags-error" class="error-message" role="alert"></div>
+                    </div>
                 </div>
                 
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <button class="text-white hover:text-indigo-200 transition-colors relative" aria-label="Notifications" aria-haspopup="true">
-                            <i class="fas fa-bell" aria-hidden="true"></i>
-                            <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" aria-hidden="true"></span>
-                        </button>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="Admin profile picture" class="w-8 h-8 rounded-full border-2 border-indigo-500">
-                        <span class="hidden md:inline">Admin User</span>
-                    </div>
-                    <a href="login.html" class="text-white hover:text-indigo-200 transition-colors" aria-label="Logout">
-                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
-                    </a>
+                <div class="form-group">
+                    <label class="form-label" for="description">Job Description <span class="text-red-400" aria-hidden="true">*</span></label>
+                    <textarea id="description" name="description" rows="4" class="form-control" required aria-required="true" aria-describedby="description-error"></textarea>
+                    <div id="description-error" class="error-message" role="alert"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="requirements">Requirements <span class="text-red-400" aria-hidden="true">*</span></label>
+                    <textarea id="requirements" name="requirements" rows="4" class="form-control" required aria-required="true" aria-describedby="requirements-error"></textarea>
+                    <div id="requirements-error" class="error-message" role="alert"></div>
+                </div>
+                
+                
+                <div class="btn-group">
+                    <button type="button" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary" aria-describedby="submit-help">
+                        <span class="button-text">Post Job</span>
+                        <span class="loading-spinner hidden" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Recent Jobs -->
+        <section class="content-section" aria-labelledby="recent-jobs-heading">
+            <div class="section-header">
+                <h2 id="recent-jobs-heading" class="section-title">Recent Job Postings</h2>
+                <div class="relative w-64">
+                    <label for="job-search" class="sr-only">Search jobs</label>
+                    <input type="text" id="job-search" placeholder="Search jobs..." class="form-control pl-10 py-2" aria-describedby="search-help">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400" aria-hidden="true"></i>
+                    <button id="clear-search" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600 hidden" aria-label="Clear search">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
                 </div>
             </div>
-        </div>
-    </header>
-
-    <div class="container mx-auto px-4 py-6">
-        <div class="flex flex-col md:flex-row gap-6">
-            <!-- Main Content -->
-            <main class="flex-1 w-full" id="main-content">
-                <!-- Stats Cards Section -->
-                <section aria-labelledby="stats-heading">
-                    <h2 id="stats-heading" class="sr-only">Dashboard Statistics</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                        <article class="stat-card">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-400 text-sm">Total Jobs</p>
-                                    <p class="text-2xl font-bold mt-1" id="total-jobs">248</p>
+            
+            <div class="table-container">
+                <table class="table" aria-describedby="jobs-table-caption">
+                    <caption id="jobs-table-caption" class="sr-only">List of recent job postings</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Job Title</th>
+                            <th scope="col">Company</th>
+                            <th scope="col">Location</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Date Posted</th>
+                            <th scope="col">Tags</th>
+                            <th scope="col" class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-table-body">
+                        <tr class="loading-row">
+                            <td colspan="7" class="text-center">
+                                <div class="flex justify-center items-center">
+                                    <div class="loading-spinner" aria-hidden="true"></div>
+                                    <span class="ml-2">Loading jobs...</span>
                                 </div>
-                                <div class="stat-icon">
-                                    <i class="fas fa-briefcase text-indigo-400" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <span class="text-green-400 text-sm font-medium">+12.5%</span>
-                                <span class="text-gray-500 text-sm">from last month</span>
-                            </div>
-                        </article>
-                        
-                        <article class="stat-card">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-400 text-sm">Total Users</p>
-                                    <p class="text-2xl font-bold mt-1" id="total-users">1,842</p>
-                                </div>
-                                <div class="stat-icon">
-                                    <i class="fas fa-users text-green-400" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <span class="text-green-400 text-sm font-medium">+8.2%</span>
-                                <span class="text-gray-500 text-sm">from last month</span>
-                            </div>
-                        </article>
-                        
-                        <article class="stat-card">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-400 text-sm">Applications</p>
-                                    <p class="text-2xl font-bold mt-1" id="total-applications">3,241</p>
-                                </div>
-                                <div class="stat-icon">
-                                    <i class="fas fa-file-alt text-blue-400" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <span class="text-green-400 text-sm font-medium">+5.7%</span>
-                                <span class="text-gray-500 text-sm">from last month</span>
-                            </div>
-                        </article>
-                        
-                        <article class="stat-card">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-400 text-sm">Revenue</p>
-                                    <p class="text-2xl font-bold mt-1" id="total-revenue">KSh 428K</p>
-                                </div>
-                                <div class="stat-icon">
-                                    <i class="fas fa-coins text-purple-400" aria-hidden="true"></i>
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <span class="text-green-400 text-sm font-medium">+10.3%</span>
-                                <span class="text-gray-500 text-sm">from last month</span>
-                            </div>
-                        </article>
-                    </div>
-                </section>
-
-                <!-- Job Posting Form Section -->
-                <section aria-labelledby="job-form-heading" class="bg-slate-800 rounded-lg shadow p-6 mb-6">
-                    <h2 id="job-form-heading" class="text-xl font-bold mb-6 pb-2 border-b border-gray-700">Post a New Job</h2>
-                    <form id="job-posting-form" novalidate>
-                        <fieldset class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <legend class="sr-only">Job Posting Details</legend>
-                            <div class="form-group">
-                                <label class="form-label" for="job-title">Job Title <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                                <input type="text" id="job-title" name="job-title" class="form-control" required aria-required="true" aria-describedby="job-title-error">
-                                <div id="job-title-error" class="error-message" role="alert">Please enter a job title</div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="company">Company <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                                <input type="text" id="company" name="company" class="form-control" required aria-required="true" aria-describedby="company-error">
-                                <div id="company-error" class="error-message" role="alert">Please enter a company name</div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="location">Location <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                                <input type="text" id="location" name="location" class="form-control" required aria-required="true" aria-describedby="location-error">
-                                <div id="location-error" class="error-message" role="alert">Please enter a location</div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="job-type">Job Type <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                                <select id="job-type" name="job-type" class="form-control" required aria-required="true" aria-describedby="job-type-error">
-                                    <option value="">Select Job Type</option>
-                                    <option value="Full-time">Full-time</option>
-                                    <option value="Part-time">Part-time</option>
-                                    <option value="Contract">Contract</option>
-                                    <option value="Internship">Internship</option>
-                                    <option value="Remote">Remote</option>
-                                </select>
-                                <div id="job-type-error" class="error-message" role="alert">Please select a job type</div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="salary">Salary Range <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                                <input type="text" id="salary" name="salary" placeholder="e.g., KSh 50,000 - 80,000" class="form-control" required aria-required="true" aria-describedby="salary-error">
-                                <div id="salary-error" class="error-message" role="alert">Please enter a salary range</div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label" for="tags">Tags (comma separated)</label>
-                                <input type="text" id="tags" name="tags" placeholder="e.g., JavaScript, React, Node.js" class="form-control" aria-describedby="tags-error">
-                                <div id="tags-error" class="error-message" role="alert">Please enter valid tags</div>
-                            </div>
-                        </fieldset>
-                        
-                        <div class="form-group">
-                            <label class="form-label" for="description">Job Description <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                            <textarea id="description" name="description" rows="4" class="form-control" required aria-required="true" aria-describedby="description-error"></textarea>
-                            <div id="description-error" class="error-message" role="alert">Please enter a job description</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label" for="requirements">Requirements <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                            <textarea id="requirements" name="requirements" rows="4" class="form-control" required aria-required="true" aria-describedby="requirements-error"></textarea>
-                            <div id="requirements-error" class="error-message" role="alert">Please enter job requirements</div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label" for="application-link">Application Link/Email <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                            <input type="text" id="application-link" name="application-link" class="form-control" required aria-required="true" aria-describedby="application-link-error">
-                            <div id="application-link-error" class="error-message" role="alert">Please enter a valid application link or email</div>
-                        </div>
-                        
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-secondary">Cancel</button>
-                            <button type="submit" class="btn btn-primary" aria-describedby="submit-help">
-                                <span class="button-text">Post Job</span>
-                                <span class="loading-spinner hidden" aria-hidden="true"></span>
-                            </button>
-                            <div id="submit-help" class="sr-only">Submit the job posting form</div>
-                        </div>
-                    </form>
-                </section>
-
-                <!-- Recent Jobs Table Section -->
-                <section aria-labelledby="recent-jobs-heading" class="bg-slate-800 rounded-lg shadow p-6">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-                        <h2 id="recent-jobs-heading" class="text-xl font-bold">Recent Job Postings</h2>
-                        <div class="relative w-full md:w-64">
-                            <label for="job-search" class="sr-only">Search jobs</label>
-                            <input type="text" id="job-search" placeholder="Search jobs..." class="form-control pl-10 pr-10 py-2" aria-describedby="search-help">
-                            <i class="fas fa-search absolute left-3 top-3 text-gray-400" aria-hidden="true"></i>
-                            <button id="clear-search" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600 hidden" aria-label="Clear search">
-                                <i class="fas fa-times" aria-hidden="true"></i>
-                            </button>
-                            <div id="search-help" class="sr-only">Enter keywords to search job postings</div>
-                        </div>
-                    </div>
-                    
-                    <div class="table-container">
-                        <table class="table" aria-describedby="jobs-table-caption">
-                            <caption id="jobs-table-caption" class="sr-only">List of recent job postings with actions to edit or delete</caption>
-                            <thead>
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider" scope="col">Job Title</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider" scope="col">Company</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider" scope="col">Location</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider" scope="col">Type</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider" scope="col">Date Posted</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider" scope="col">Tags</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider" scope="col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="jobs-table-body">
-                                <tr class="loading-row">
-                                    <td colspan="7" class="px-6 py-4 text-center">
-                                        <div class="flex justify-center items-center">
-                                            <div class="loading-spinner" aria-hidden="true"></div>
-                                            <span class="ml-2">Loading jobs...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div class="text-sm text-gray-400" id="jobs-count" aria-live="polite">
-                            Showing <span class="font-medium">0</span> of <span class="font-medium">0</span> results
-                        </div>
-                        <nav class="flex space-x-2" aria-label="Job list pagination">
-                            <button class="px-3 py-1 border rounded-lg hover:bg-slate-700 disabled:opacity-50" id="prev-page" disabled aria-label="Previous page">
-                                <i class="fas fa-chevron-left" aria-hidden="true"></i> Previous
-                            </button>
-                            <button class="px-3 py-1 bg-indigo-600 text-white rounded-lg" aria-current="page" aria-label="Page 1">1</button>
-                            <button class="px-3 py-1 border rounded-lg hover:bg-slate-700" id="next-page" aria-label="Next page">
-                                Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                            </button>
-                        </nav>
-                    </div>
-                </section>
-            </main>
-        </div>
-    </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="text-sm text-gray-400" id="jobs-count" aria-live="polite">
+                    Showing <span class="font-medium">0</span> of <span class="font-medium">0</span> results
+                </div>
+                <nav class="flex space-x-2" aria-label="Job list pagination">
+                    <button class="btn btn-secondary" id="prev-page" disabled aria-label="Previous page">
+                        <i class="fas fa-chevron-left" aria-hidden="true"></i> Previous
+                    </button>
+                    <button class="btn btn-primary" aria-current="page" aria-label="Page 1">1</button>
+                    <button class="btn btn-secondary" id="next-page" aria-label="Next page">
+                        Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </nav>
+            </div>
+        </section>
+    </main>
 
     <!-- Edit Job Modal -->
-    <div id="edit-job-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full hidden z-50" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div id="edit-job-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto hidden z-50" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md modal-content">
-            <div class="flex justify-between items-center pb-3 modal-header">
+            <div class="modal-header">
                 <h3 id="modal-title" class="text-xl font-semibold text-gray-200">Edit Job</h3>
-                <button id="close-edit-modal" class="text-gray-400 bg-transparent hover:bg-slate-700 hover:text-gray-200 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" aria-label="Close modal">
+                <button id="close-edit-modal" class="text-gray-400 hover:bg-slate-700 hover:text-gray-200 rounded-lg text-sm p-1.5" aria-label="Close modal">
                     <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <form id="edit-job-form" class="space-y-4" novalidate>
-                <fieldset class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <legend class="sr-only">Edit Job Details</legend>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-group">
-                        <label for="edit-job-title" class="form-label">Job Title <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                        <label for="edit-job-title" class="form-label">Job Title <span class="text-red-400" aria-hidden="true">*</span></label>
                         <input type="text" id="edit-job-title" name="edit-job-title" required class="form-control" aria-required="true" aria-describedby="edit-job-title-error">
-                        <div id="edit-job-title-error" class="error-message" role="alert">Please enter a job title</div>
+                        <div id="edit-job-title-error" class="error-message" role="alert"></div>
                     </div>
                     <div class="form-group">
-                        <label for="edit-company" class="form-label">Company <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                        <label for="edit-company" class="form-label">Company <span class="text-red-400" aria-hidden="true">*</span></label>
                         <input type="text" id="edit-company" name="edit-company" required class="form-control" aria-required="true" aria-describedby="edit-company-error">
-                        <div id="edit-company-error" class="error-message" role="alert">Please enter a company name</div>
+                        <div id="edit-company-error" class="error-message" role="alert"></div>
                     </div>
                     <div class="form-group">
-                        <label for="edit-location" class="form-label">Location <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                        <label for="edit-location" class="form-label">Location <span class="text-red-400" aria-hidden="true">*</span></label>
                         <input type="text" id="edit-location" name="edit-location" required class="form-control" aria-required="true" aria-describedby="edit-location-error">
-                        <div id="edit-location-error" class="error-message" role="alert">Please enter a location</div>
+                        <div id="edit-location-error" class="error-message" role="alert"></div>
                     </div>
                     <div class="form-group">
-                        <label for="edit-job-type" class="form-label">Job Type <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                        <label for="edit-job-type" class="form-label">Job Type <span class="text-red-400" aria-hidden="true">*</span></label>
                         <select id="edit-job-type" name="edit-job-type" required class="form-control" aria-required="true" aria-describedby="edit-job-type-error">
                             <option value="Full-time">Full-time</option>
                             <option value="Part-time">Part-time</option>
@@ -353,64 +369,60 @@
                             <option value="Internship">Internship</option>
                             <option value="Remote">Remote</option>
                         </select>
-                        <div id="edit-job-type-error" class="error-message" role="alert">Please select a job type</div>
+                        <div id="edit-job-type-error" class="error-message" role="alert"></div>
                     </div>
                     <div class="form-group">
-                        <label for="edit-salary" class="form-label">Salary <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                        <label for="edit-salary" class="form-label">Salary <span class="text-red-400" aria-hidden="true">*</span></label>
                         <input type="text" id="edit-salary" name="edit-salary" required class="form-control" aria-required="true" aria-describedby="edit-salary-error">
-                        <div id="edit-salary-error" class="error-message" role="alert">Please enter a salary range</div>
+                        <div id="edit-salary-error" class="error-message" role="alert"></div>
                     </div>
                     <div class="form-group">
                         <label for="edit-tags" class="form-label">Tags (comma separated)</label>
                         <input type="text" id="edit-tags" name="edit-tags" class="form-control" aria-describedby="edit-tags-error">
-                        <div id="edit-tags-error" class="error-message" role="alert">Please enter valid tags</div>
+                        <div id="edit-tags-error" class="error-message" role="alert"></div>
                     </div>
-                </fieldset>
+                </div>
                 <div class="form-group">
-                    <label for="edit-description" class="form-label">Job Description <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                    <label for="edit-description" class="form-label">Job Description <span class="text-red-400" aria-hidden="true">*</span></label>
                     <textarea id="edit-description" name="edit-description" rows="3" required class="form-control" aria-required="true" aria-describedby="edit-description-error"></textarea>
-                    <div id="edit-description-error" class="error-message" role="alert">Please enter a job description</div>
+                    <div id="edit-description-error" class="error-message" role="alert"></div>
                 </div>
                 <div class="form-group">
-                    <label for="edit-requirements" class="form-label">Requirements <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                    <label for="edit-requirements" class="form-label">Requirements <span class="text-red-400" aria-hidden="true">*</span></label>
                     <textarea id="edit-requirements" name="edit-requirements" rows="3" required class="form-control" aria-required="true" aria-describedby="edit-requirements-error"></textarea>
-                    <div id="edit-requirements-error" class="error-message" role="alert">Please enter job requirements</div>
+                    <div id="edit-requirements-error" class="error-message" role="alert"></div>
                 </div>
                 <div class="form-group">
-                    <label for="edit-application-link" class="form-label">Application Link <span class="text-red-400" aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                    <label for="edit-application-link" class="form-label">Application Link <span class="text-red-400" aria-hidden="true">*</span></label>
                     <input type="url" id="edit-application-link" name="edit-application-link" required class="form-control" aria-required="true" aria-describedby="edit-application-link-error">
-                    <div id="edit-application-link-error" class="error-message" role="alert">Please enter a valid application link</div>
+                    <div id="edit-application-link-error" class="error-message" role="alert"></div>
                 </div>
-                <div class="flex flex-col sm:flex-row justify-end gap-3 pt-4 modal-footer">
-                    <button type="button" id="cancel-edit" class="btn btn-secondary">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary" aria-describedby="edit-submit-help">
+                <div class="modal-footer">
+                    <button type="button" id="cancel-edit" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
                         <span class="button-text">Update Job</span>
-                        <div class="loading-spinner hidden ml-2" aria-hidden="true">
-                            <i class="fas fa-spinner fa-spin"></i>
-                        </div>
+                        <span class="loading-spinner hidden" aria-hidden="true"></span>
                     </button>
-                    <div id="edit-submit-help" class="sr-only">Update the job posting</div>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Toast Container -->
-    <div class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
-    
+    <div class="toast-container" role="status" aria-live="polite"></div>
+
     <!-- Debug Panel -->
     <div class="debug-panel hidden" id="debug-panel" role="region" aria-label="Debug information">
         <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-semibold">Debug Panel</h3>
-            <button class="text-gray-400 hover:text-white" id="debug-close" aria-label="Close debug panel">
+            <button id="debug-close" class="text-gray-400 hover:text-white" aria-label="Close debug panel">
                 <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
         <div id="debug-content" aria-live="polite"></div>
     </div>
-    
+
+    <!-- Debug Toggle -->
     <div class="debug-toggle">
         <label class="flex items-center cursor-pointer">
             <div class="relative">
@@ -422,6 +434,33 @@
         </label>
     </div>
     
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-toggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('open');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.getElementById('mobile-menu-toggle');
+            
+            if (window.innerWidth <= 1024 && 
+                !sidebar.contains(event.target) && 
+                !menuToggle.contains(event.target) && 
+                sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        });
+
+        // Close sidebar when window is resized to desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 1024) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        });
+    </script>
     <script src="admin.js"></script>
 </body>
 </html>
