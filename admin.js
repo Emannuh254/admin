@@ -1,7 +1,7 @@
 // ===============================
 // API Configuration
 // ===============================
-const API_BASE ="http://192.168.0.230:8000/"; //"https://server-jobs-2.onrender.com/api";
+const API_BASE = "https://admin-9hxq.onrender.com"; //"https://server-jobs-2.onrender.com/api";
 // const API_BASE = "http://0.0.0.0:8000/api";
 
 // ===============================
@@ -74,6 +74,7 @@ function cacheElements() {
         clearSearchBtn: document.getElementById('clear-search'),
         jobsTableBody: document.getElementById('jobs-table-body'),
         jobsCount: document.getElementById('jobs-count'),
+        totalJobs: document.getElementById('total-jobs'),
         mobileMenuToggle: document.getElementById('mobile-menu-toggle'),
         sidebar: document.getElementById('sidebar'),
         editJobModal: document.getElementById('edit-job-modal'),
@@ -125,6 +126,12 @@ const utils = {
         const template = document.createElement('template');
         template.innerHTML = htmlString.trim();
         return template.content.firstChild;
+    },
+
+    formatDate: (dateString) => {
+        if (!dateString) return 'N/A';
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
     }
 };
 
@@ -257,7 +264,12 @@ const uiService = {
 
     updateJobsCount() {
         if (state.elements.jobsCount) {
-            state.elements.jobsCount.textContent = `Showing ${state.jobs.length} of ${state.jobs.length} results`;
+            state.elements.jobsCount.innerHTML = `Showing <span class="font-medium">${state.jobs.length}</span> of <span class="font-medium">${state.jobs.length}</span> results`;
+        }
+        
+        // Update total jobs stat
+        if (state.elements.totalJobs) {
+            state.elements.totalJobs.textContent = state.jobs.length;
         }
     },
 
@@ -295,9 +307,15 @@ const uiService = {
         const fragment = document.createDocumentFragment();
         
         state.jobs.forEach(job => {
-            const tags = Array.isArray(job.tags) 
-                ? job.tags.map(tag => `<span class="tag-badge">${utils.escapeHtml(tag)}</span>`).join('') 
-                : 'N/A';
+            // Parse tags if they're stored as a string
+            let tags = job.tags || [];
+            if (typeof tags === 'string') {
+                tags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
+            }
+            
+            const tagsHtml = tags.length > 0 
+                ? tags.map(tag => `<span class="tag-badge">${utils.escapeHtml(tag)}</span>`).join('') 
+                : '<span class="text-gray-500">None</span>';
                 
             const tr = utils.createTemplate(`
                 <tr class="job-row">
@@ -305,8 +323,8 @@ const uiService = {
                     <td>${utils.escapeHtml(job.company || 'N/A')}</td>
                     <td>${utils.escapeHtml(job.location || 'N/A')}</td>
                     <td>${utils.escapeHtml(job.type || 'N/A')}</td>
-                    <td>${utils.escapeHtml(job.date_posted || 'N/A')}</td>
-                    <td>${tags}</td>
+                    <td>${utils.formatDate(job.date_posted)}</td>
+                    <td>${tagsHtml}</td>
                     <td class="text-right">
                         <button class="btn btn-sm btn-primary" data-action="edit-job" data-id="${job.id}">
                             <i class="fas fa-edit"></i> Edit
@@ -328,13 +346,19 @@ const uiService = {
     fillEditForm(job) {
         if (!state.elements.editJobForm) return;
         
+        // Parse tags if they're stored as a string
+        let tags = job.tags || [];
+        if (typeof tags === 'string') {
+            tags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
+        }
+        
         const fields = {
             'edit-job-title': job.title || '',
             'edit-company': job.company || '',
             'edit-location': job.location || '',
             'edit-job-type': job.type || '',
             'edit-salary': job.salary || '',
-            'edit-tags': job.tags?.join(', ') || '',
+            'edit-tags': tags.join(', '),
             'edit-description': job.description || '',
             'edit-requirements': job.requirements || '',
             'edit-application-link': job.application_link || ''
@@ -385,7 +409,7 @@ const validation = {
 
         if (!input.value.trim()) {
             input.classList.add('error');
-            errorMessage.textContent = `${input.name.replace('-', ' ')} is required`;
+            errorMessage.textContent = `${input.name.replace('-', ' ').replace('edit ', '')} is required`;
             errorMessage.classList.add('show');
             return false;
         } else {
@@ -540,13 +564,15 @@ const eventHandlers = {
         
         try {
             const formData = new FormData(state.elements.jobPostingForm);
+            const tags = formData.get('tags').split(',').map(tag => tag.trim()).filter(Boolean);
+            
             const jobData = {
                 title: formData.get('job-title'),
                 company: formData.get('company'),
                 location: formData.get('location'),
                 type: formData.get('job-type'),
                 salary: formData.get('salary'),
-                tags: formData.get('tags').split(',').map(tag => tag.trim()).filter(Boolean),
+                tags: tags,
                 description: formData.get('description'),
                 requirements: formData.get('requirements'),
                 application_link: formData.get('application-link')
@@ -558,7 +584,7 @@ const eventHandlers = {
             if (response) {
                 showToast("Job posted successfully", "success");
                 state.elements.jobPostingForm.reset();
-                fetchJobs();
+                fetchJobs(); // Refresh the job list
             }
         } catch (error) {
             logDebug("Error submitting job:", error);
@@ -580,13 +606,15 @@ const eventHandlers = {
         
         try {
             const formData = new FormData(state.elements.editJobForm);
+            const tags = formData.get('edit-tags').split(',').map(tag => tag.trim()).filter(Boolean);
+            
             const jobData = {
                 title: formData.get('edit-job-title'),
                 company: formData.get('edit-company'),
                 location: formData.get('edit-location'),
                 type: formData.get('edit-job-type'),
                 salary: formData.get('edit-salary'),
-                tags: formData.get('edit-tags').split(',').map(tag => tag.trim()).filter(Boolean),
+                tags: tags,
                 description: formData.get('edit-description'),
                 requirements: formData.get('edit-requirements'),
                 application_link: formData.get('edit-application-link')
@@ -598,7 +626,7 @@ const eventHandlers = {
             if (response) {
                 showToast("Job updated successfully", "success");
                 uiService.closeEditJobModal();
-                fetchJobs();
+                fetchJobs(); // Refresh the job list
             }
         } catch (error) {
             logDebug("Error updating job:", error);
@@ -635,7 +663,7 @@ const eventHandlers = {
             const response = await apiService.deleteJob(jobId);
             if (response) {
                 showToast("Job deleted successfully", "success");
-                fetchJobs();
+                fetchJobs(); // Refresh the job list
             }
         } catch (error) {
             logDebug("Error deleting job:", error);
@@ -965,7 +993,7 @@ function init() {
     if (!isLoginPage) {
         checkServerStatus().then(isOnline => {
             if (isOnline && checkAuth()) {
-                fetchJobs();
+                fetchJobs(); // Fetch jobs when the page loads
             } else if (!isOnline) {
                 showToast("Unable to connect to server. Please check your connection.", "danger");
             }
