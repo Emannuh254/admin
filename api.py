@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
+from functools import wraps
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
@@ -22,6 +23,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     date_posted TEXT NOT NULL
 );
 """
+
+# Admin Token Configuration
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'admin-secret-token-12345')
 
 # Flask App Initialization
 app = Flask(__name__)
@@ -49,6 +53,21 @@ def init_db():
         cursor.execute(SCHEMA)
         db.commit()
 
+# Admin Authentication Decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith('Bearer '):
+            return jsonify({"error": "Authorization token required"}), 401
+        
+        token_value = token.split(' ')[1]
+        if token_value != ADMIN_TOKEN:
+            return jsonify({"error": "Invalid or expired token"}), 401
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Health Check Endpoints (both /health and /api/health)
 @app.route('/health', methods=['GET', 'OPTIONS'])
 @app.route('/api/health', methods=['GET', 'OPTIONS'])
@@ -57,7 +76,7 @@ def health_check():
         return '', 200  # Handle preflight requests
     return jsonify({"status": "healthy"})
 
-# Get Jobs - Handle both /jobs/ and /api/jobs/
+# Get Jobs - Handle both /jobs/ and /api/jobs/ (Public)
 def get_jobs_handler():
     db = get_db()
     cursor = db.cursor()
@@ -86,7 +105,7 @@ def get_jobs_handler():
     
     return jsonify(jobs)
 
-# Register get_jobs for both paths
+# Register get_jobs for both paths (Public)
 @app.route('/jobs/', methods=['GET', 'OPTIONS'])
 @app.route('/api/jobs/', methods=['GET', 'OPTIONS'])
 def get_jobs():
@@ -94,7 +113,14 @@ def get_jobs():
         return '', 200  # Handle preflight requests
     return get_jobs_handler()
 
-# Post Job - Handle both /jobs/post/ and /api/jobs/post/
+# Client-specific endpoint for getting jobs (Public)
+@app.route('/client/jobs/', methods=['GET', 'OPTIONS'])
+def client_get_jobs():
+    if request.method == 'OPTIONS':
+        return '', 200  # Handle preflight requests
+    return get_jobs_handler()
+
+# Post Job - Handle both /jobs/post/ and /api/jobs/post/ (Admin only)
 def post_job_handler():
     data = request.get_json()
     
@@ -144,15 +170,16 @@ def post_job_handler():
     job['id'] = cursor.lastrowid
     return jsonify(job), 201
 
-# Register post_job for both paths
+# Register post_job for both paths (Admin only)
 @app.route('/jobs/post/', methods=['POST', 'OPTIONS'])
 @app.route('/api/jobs/post/', methods=['POST', 'OPTIONS'])
+@admin_required
 def post_job():
     if request.method == 'OPTIONS':
         return '', 200  # Handle preflight requests
     return post_job_handler()
 
-# Get Job - Handle both /jobs/<id>/ and /api/jobs/<id>/
+# Get Job - Handle both /jobs/<id>/ and /api/jobs/<id>/ (Public)
 def get_job_handler(job_id):
     db = get_db()
     cursor = db.cursor()
@@ -165,7 +192,7 @@ def get_job_handler(job_id):
     
     return jsonify(dict(job))
 
-# Register get_job for both paths
+# Register get_job for both paths (Public)
 @app.route('/jobs/<int:job_id>/', methods=['GET', 'OPTIONS'])
 @app.route('/api/jobs/<int:job_id>/', methods=['GET', 'OPTIONS'])
 def get_job(job_id):
@@ -173,7 +200,14 @@ def get_job(job_id):
         return '', 200  # Handle preflight requests
     return get_job_handler(job_id)
 
-# Update Job - Handle both /jobs/<id>/ and /api/jobs/<id>/
+# Client-specific endpoint for getting a single job (Public)
+@app.route('/client/jobs/<int:job_id>/', methods=['GET', 'OPTIONS'])
+def client_get_job(job_id):
+    if request.method == 'OPTIONS':
+        return '', 200  # Handle preflight requests
+    return get_job_handler(job_id)
+
+# Update Job - Handle both /jobs/<id>/ and /api/jobs/<id>/ (Admin only)
 def update_job_handler(job_id):
     data = request.get_json()
     
@@ -217,15 +251,16 @@ def update_job_handler(job_id):
     updated_job = cursor.fetchone()
     return jsonify(dict(updated_job))
 
-# Register update_job for both paths
+# Register update_job for both paths (Admin only)
 @app.route('/jobs/<int:job_id>/', methods=['PUT', 'OPTIONS'])
 @app.route('/api/jobs/<int:job_id>/', methods=['PUT', 'OPTIONS'])
+@admin_required
 def update_job(job_id):
     if request.method == 'OPTIONS':
         return '', 200  # Handle preflight requests
     return update_job_handler(job_id)
 
-# Delete Job - Handle both /jobs/<id>/ and /api/jobs/<id>/
+# Delete Job - Handle both /jobs/<id>/ and /api/jobs/<id>/ (Admin only)
 def delete_job_handler(job_id):
     db = get_db()
     cursor = db.cursor()
@@ -243,13 +278,27 @@ def delete_job_handler(job_id):
     
     return jsonify({"message": "Job deleted successfully"})
 
-# Register delete_job for both paths
+# Register delete_job for both paths (Admin only)
 @app.route('/jobs/<int:job_id>/', methods=['DELETE', 'OPTIONS'])
 @app.route('/api/jobs/<int:job_id>/', methods=['DELETE', 'OPTIONS'])
+@admin_required
 def delete_job(job_id):
     if request.method == 'OPTIONS':
         return '', 200  # Handle preflight requests
     return delete_job_handler(job_id)
+
+# Admin login endpoint (for getting a token)
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    data = request.get_json()
+    username = data.get('username', '')
+    password = data.get('password', '')
+    
+    # Simple authentication (in production, use a more secure method)
+    if username == 'admin' and password == 'password':
+        return jsonify({"token": ADMIN_TOKEN}), 200
+    else:
+        return jsonify({"error": "Invalid credentials"}), 401
 
 # Error Handling
 @app.errorhandler(HTTPException)
@@ -278,6 +327,8 @@ if __name__ == '__main__':
         print("Initializing database...")
         init_db()
         print("Database initialized successfully!")
+        print(f"Admin token: {ADMIN_TOKEN}")
     elif args.command in ['run', 'start']:
         print(f"Starting server on {args.host}:{args.port}")
+        print(f"Admin token: {ADMIN_TOKEN}")
         app.run(host=args.host, port=args.port, debug=True)
