@@ -1,4 +1,8 @@
-const API_BASE = "https://server-jobs-2.onrender.com/api";
+// ===============================
+// API Configuration
+// ===============================
+const API_BASE ="http://192.168.0.230:8000/"; //"https://server-jobs-2.onrender.com/api";
+// const API_BASE = "http://0.0.0.0:8000/api";
 
 // ===============================
 // Debug Configuration
@@ -24,7 +28,7 @@ function logout() {
 }
 
 function login(username, password) {
-    // Placeholder for future backend auth
+    // Simple authentication for demo purposes
     if (username === 'admin' && password === '1234') {
         localStorage.setItem('authToken', 'dummy-token-' + Math.random().toString(36).substring(2));
         return true;
@@ -143,8 +147,7 @@ const apiService = {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': localStorage.getItem('authToken') ? `Bearer ${localStorage.getItem('authToken')}` : ''
+                    'Accept': 'application/json'
                 },
                 signal: controller.signal
             };
@@ -180,10 +183,6 @@ const apiService = {
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
-                if (response.status === 401 || response.status === 403) {
-                    logout();
-                    throw new Error('Unauthorized access. Redirecting to login.');
-                }
                 throw new Error(data.message || data.detail || `HTTP error! status: ${response.status}`);
             }
 
