@@ -134,7 +134,7 @@
                     <div class="stat-header">
                         <div>
                             <h3 class="stat-title">Total Jobs</h3>
-                            <p class="stat-value" id="total-jobs">248</p>
+                            <p class="stat-value" id="total-jobs">0</p>
                         </div>
                         <div class="stat-icon">
                             <i class="fas fa-briefcase text-indigo-400"></i>
@@ -142,7 +142,7 @@
                     </div>
                     <div class="stat-change positive">
                         <i class="fas fa-arrow-up"></i>
-                        <span>12.5% from last month</span>
+                        <span>Updated just now</span>
                     </div>
                 </article>
                 
@@ -439,31 +439,54 @@
     </div>
     
     <script>
-        // Mobile menu toggle
-        document.getElementById('mobile-menu-toggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('open');
-        });
+        // Check if user is logged in
+        document.addEventListener('DOMContentLoaded', () => {
+            const authToken = localStorage.getItem('authToken');
+            const loggedIn = localStorage.getItem('loggedIn');
+            
+            if (!authToken || loggedIn !== 'true') {
+                // Redirect to login page if not authenticated
+                window.location.href = 'index.html';
+                return;
+            }
 
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(event) {
+            // ======== MENU TOGGLE ========
             const sidebar = document.getElementById('sidebar');
             const menuToggle = document.getElementById('mobile-menu-toggle');
-            
-            if (window.innerWidth <= 1024 && 
-                !sidebar.contains(event.target) && 
-                !menuToggle.contains(event.target) && 
-                sidebar.classList.contains('open')) {
-                sidebar.classList.remove('open');
-            }
-        });
+            const logoutBtn = document.getElementById('logout-btn');
 
-        // Close sidebar when window is resized to desktop
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 1024) {
-                document.getElementById('sidebar').classList.remove('open');
-            }
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+
+            // Close sidebar when clicking outside
+            document.addEventListener('click', (event) => {
+                if (
+                    window.innerWidth <= 1024 &&
+                    !sidebar.contains(event.target) &&
+                    !menuToggle.contains(event.target) &&
+                    sidebar.classList.contains('open')
+                ) {
+                    sidebar.classList.remove('open');
+                }
+            });
+
+            // Close sidebar when resizing back to desktop
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 1024) {
+                    sidebar.classList.remove('open');
+                }
+            });
+
+            // ======== LOGOUT ========
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('loggedIn');
+                window.location.href = 'index.html';
+            });
         });
     </script>
+    
     <script src="admin.js"></script>
 </body>
 </html>
